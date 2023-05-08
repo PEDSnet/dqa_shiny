@@ -1,0 +1,72 @@
+/* font formatting */
+body {
+  background-color: whitesmoke;
+  color: #011d4e;
+}
+
+h4 {
+  font-family: 'Geneva';
+}
+h6 {
+  font-family: 'Arial';
+  font-weight: bold;
+}
+
+p {
+  font-family: 'Arial';
+}
+
+u {
+  font-family: 'Arial';
+  font-weight: bold;
+}
+ul {
+  font-family: 'Arial';
+}
+
+/* navigation panel */
+.navbar-default {
+  background-color: #011d4e;
+  font-family: 'Impact';
+  color: #D4C5C7;
+}
+
+/*
+.navbar-nav li a {
+  background-color: #bcbec4;
+  font-family: 'Geneva';
+  color: Navy;
+}
+.section.sidebar form p:first-child {
+  margin-top: 10px;
+}
+*/
+
+
+/* Adjusts background of the dropdown menu, but behind the specs in navbar-default
+.dropdown-menu {
+  background-color: black;
+  font-family: 'Geneva';
+  color: white;
+}
+*/
+
+/*
+.navbar-header {
+  font-family: 'Trebuchet MS';
+  color: white;
+  font-size: 200%;
+}
+*/
+
+/* boxes housing the plots */
+.box-header {
+  font-family: 'Geneva';
+  text-shadow: .5px .5px #ACACAC;
+  color: #E06739;
+}
+
+.main-sidebar {
+  background-color: Navy;
+}
+

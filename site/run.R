@@ -120,13 +120,13 @@ config('retain_intermediates', NA)
 config('results_schema', 'dqa_rox')
 
 #' Current database version
-config('db_current', 'v49')
+config('db_current', 's8')
 #' Previous database version
-config('db_previous', 'v48')
+config('db_previous', 's7')
 
 #' Determine whether actual site names or masked identifiers
 #' should be shown on the app
-config('mask_site', FALSE)
+config('mask_site', TRUE)
 
 #################################################################
 #
@@ -142,7 +142,7 @@ config('mask_site', FALSE)
 #' table name length.
 #' @md
 config('results_name_tag',
-      '_op_1510')
+       '_pasc_109')
 config('local_name_tag', '_loc')
 
 #' Execution mode

@@ -43,7 +43,9 @@ config('db_src', {
   require(srcr);
   default <- Sys.getenv('PEDSNET_DB_SRC_CONFIG_BASE', unset = NA)
   if (is.na(default) || nchar(default) == 0) default <- 'argos_pedsnet_current'
-  srcr(default)
+  srcr(default,
+       dirs = '~/Documents/.argos',
+       allow_post_connect = getOption("srcr.allow_post_connect", c("sql")))
 })
 
 #' Name of the schema, if any, to be prepended to CDM fact table names.
@@ -51,7 +53,7 @@ config('db_src', {
 #' @details
 #' If `NA`, no schema qualifier is added.
 #' @md
-config('cdm_schema', 'dcc_pedsnet')
+config('cdm_schema', 'peds_recover')
 
 #' Name of the schema, if any, to be prepended to vocabulary tables.
 #'

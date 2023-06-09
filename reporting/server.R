@@ -128,36 +128,17 @@ shinyServer(function(input, output) {
   })
 
   # best mapped concepts ----
-  # capture data
-  bmc_output <- reactive({
-    results_tbl('bmc_rxnorm_output')%>%collect()%>%
-      mutate(rxnorm_level_fact=case_when(rxnorm_level=="Branded Pack"~"1. BPCK",
-                                         rxnorm_level=="Clinical Pack"~"2. GPCK",
-                                         rxnorm_level=="Branded Drug"|rxnorm_level=="Quant Branded Drug"~"3. SBD",
-                                         rxnorm_level=="Clinical Drug"|rxnorm_level=="Quant Clinical Drug"~"4. SDC",
-                                         rxnorm_level=="Branded Drug Form"~"5. SBDF",
-                                         rxnorm_level=="Clinical Drug Form"~"6. SCDF",
-                                         rxnorm_level== "Ingredient"~"7. MIN",
-                                         rxnorm_level=="Branded Drug Comp"~"8. SBDC",
-                                         rxnorm_level=="Clinical Drug Comp"~"9. SCDC",
-                                         rxnorm_level=="Precise Ingredient"~"10. PIN",
-                                         TRUE~rxnorm_level)) %>%
-      mutate(rxnorm_level_fact=factor(rxnorm_level_fact, levels=c("1. BPCK",
-                                                                  "2. GPCK",
-                                                                  "3. SBD",
-                                                                  "4. SDC",
-                                                                  "5. SBDF",
-                                                                  "6. SCDF",
-                                                                  "7. MIN",
-                                                                  "8. SBDC",
-                                                                  "9. SCDC",
-                                                                  "10. PIN")),
-             site=case_when(config('mask_site')~site_anon,
-                                     TRUE~site))
+  # fetch data
+  bmc_pp <- reactive({
+    results_tbl('bmc_gen_output_pp')%>%
+      filter(include_new==1L)%>%
+      collect()%>%
+      mutate(site=case_when(config('mask_site')~site_anon,
+                            TRUE~site))
   })
   # adjust available site name
-  observeEvent(bmc_output(), {
-    choices_new<-c("total", unique(bmc_output()$site)%>%sort())
+  observeEvent(bmc_pp(), {
+    choices_new<-c("total", unique(bmc_pp()$site)%>%sort())
     updateSelectInput(inputId = "sitename_bmc", choices=choices_new)
   })
 
@@ -216,6 +197,11 @@ shinyServer(function(input, output) {
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))
   })
+  dcon_output_byyr <- reactive({
+    results_tbl(name='dcon_output_pp_byyr')%>%collect()%>%
+      mutate(site=case_when(config('mask_site')~site_anon,
+                            TRUE~site))
+  })
   dcon_meta <- reactive({
     results_tbl('dcon_meta')%>%
       collect()%>%
@@ -247,7 +233,7 @@ shinyServer(function(input, output) {
 
   # update choices for site name
   observeEvent(mf_visitid_output(), {
-    choices_new<-unique(mf_visitid_output()$site)%>%sort()
+    choices_new<-c("total",unique(filter(mf_visitid_output(),site!='total')$site)%>%sort())
     updateSelectInput(inputId="sitename_mf_visitid", choices=choices_new)
   })
 
@@ -548,7 +534,8 @@ shinyServer(function(input, output) {
         geom_label(fill="white")+
         theme_bw()+
         scale_fill_manual(values=site_colors)+
-        theme(legend.position = "none")+
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+              legend.position="none")+
         labs(x="Table Application",
              y="Proportion Unmapped Concepts")
     }
@@ -651,33 +638,34 @@ shinyServer(function(input, output) {
     return(outplot)
   })
   # best mapped concepts
-  # rxnorm plot
-  output$bmc_rxnorm_overall_plot <- renderPlotly({
+
+  # ----- NEW BMC
+  # best mapped concepts
+  output$bmc_overall_plot <- renderPlot({
     if(input$sitename_bmc=="total"){
-      outplot <-  ggplot(bmc_output(), aes(x=site, y=row_proportions, fill=rxnorm_level_fact,
-                                           text=paste0("level: ", rxnorm_level)))+
-        geom_bar(stat='identity', position="stack")+
+      outplot <-  ggplot(bmc_pp(), aes(x=site, y=best_row_prop, fill=site))+
+        geom_bar(stat='identity')+
+        scale_fill_manual(values=site_colors)+
         facet_wrap(~check_desc)+
         labs(x="Site",
-             y="Proportion",
-             fill="RxNorm level")+
+             y="Proportion Best Mapped")+
         coord_flip()+
-        theme_bw()+
-        scale_y_reverse()
+        theme_bw()
     }
     else{
-      outplot <- ggplot(filter(bmc_output(), site==input$sitename_bmc), aes(x=check_desc, y=row_proportions, fill=rxnorm_level_fact,
-                                                                            text=paste0("level: ", rxnorm_level)))+
-        geom_bar(stat='identity', position="stack")+
+      outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc), aes(x=check_desc, y=best_row_prop, fill=site, label=round(best_row_prop,2))) +
+  geom_bar(stat='identity')+
+  geom_label(fill="white")+
         labs(x="Check Type",
-             y="Proportion",
-             fill="RxNorm level")+
+             y="Proportion Best Mapped")+
         coord_flip()+
-        theme_bw()+
-        scale_y_reverse()
+        scale_fill_manual(values=site_colors)+
+        theme_bw()
     }
     return(outplot)
   })
+
+  #------------
 
   # facts over time plots
   # overall plot
@@ -764,11 +752,14 @@ shinyServer(function(input, output) {
         labs(x="",
              y="")
     }else{
-      showplot <- ggplot(filter(dcon_output(), yr!=9999&
+      showplot <- ggplot(filter(dcon_output_byyr(),
                                   site==input$sitename_dcon&
                                   yr>=input$date_dcon_range[1],yr<=input$date_dcon_range[2]&
                                   check_name%in%input$dcon_check)) +
-        geom_line(aes(x=yr,y=yr_prop,group=cohort,color=cohort), linewidth=1) +
+        geom_line(aes(x=yr,y=pats_prop,group=cohort,color=cohort, linetype="patients"), linewidth=1) +
+        geom_line(aes(x=yr,y=visits_prop,group=cohort,color=cohort, linetype="visits"), linewidth=1) +
+        scale_linetype_manual("concordance\ntype", values=c("patients"="solid", "visits"="dotted"))+
+     #   guides(linetype=guide_)
         theme_bw()+
         scale_x_continuous(breaks=pretty_breaks())+
         labs(x="Year",
@@ -793,7 +784,7 @@ shinyServer(function(input, output) {
         labs(x="",
              y="")
     }else{
-      showplot <- ggplot(filter(dcon_output(), yr==9999&
+      showplot <- ggplot(filter(dcon_output(),
                                   site==input$sitename_dcon&
                                   check_name%in%input$dcon_check)) +
         geom_bar(aes(x=cohort,y=yr_prop,fill=cohort), stat='identity') +

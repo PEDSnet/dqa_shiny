@@ -58,8 +58,8 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  mainPanel(
                                    fluidRow(
                                      # DC changes - site comparison
-                                     box(title="Overall Data Cycle Changes", width=12,
-                                         plotOutput("dc_overall")),
+                                     box(title="Overall Data Cycle Changes",
+                                         plotOutput("dc_overall", height=500, width=1000)),
                                      box(title="Domain-Specific Data Cycle Changes (Records)",width=12,
                                          plotOutput("dc_domain_split")),
                                      box(title="Domain-Specific Data Cycle Changes (Persons)",width=12,
@@ -157,23 +157,9 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  mainPanel(
                                    fluidRow(
                                      # RxNorm
-                                     box(title="RxNorm Specificity", width=12,
-                                         p("Rxnorm Hierarchy Preference:"),
-                                         tags$ol(
-                                           tags$li("BPCK (Branded Pack)"),
-                                           tags$li("GPCK (Clinical Pack)"),
-                                           tags$li("SBD (Branded Drug, Quant Branded Drug)"),
-                                           tags$li("SDC (Clinical Drug, Quant Clinical Drug)"),
-                                           tags$li("SBDF (Branded Drug Form)"),
-                                           tags$li("SCDF (Clinical Drug Form)"),
-                                           tags$li("MIN (Ingredient)"),
-                                           tags$li("SBDC"),
-                                           tags$li("SCDC"),
-                                           tags$li("PIN (Ingredient)"),
-                                           tags$li("IN (Ingredient)")
-                                         ),
-                                         p("Preferred levels are 1-4"),
-                                         plotlyOutput("bmc_rxnorm_overall_plot"))
+                                     box(title="Best Mapped Concept Proportions",
+                                         #plotlyOutput("bmc_rxnorm_overall_plot"))
+                                         plotOutput("bmc_overall_plot", height=750, width=1000))
                                    )#fluidrow
                                  )#mainpanel
 

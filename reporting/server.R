@@ -129,17 +129,64 @@ shinyServer(function(input, output) {
 
   # best mapped concepts ----
   # fetch data
+  top_rolled <-  results_tbl('bmc_gen_output_concepts_pp')%>%
+    filter(include_new==0)%>%
+    collect()%>%
+    group_by(site, check_desc)%>%
+    slice_max(., n=5, order_by=row_proportions) %>%
+    select(check_desc,concept)%>%
+    ungroup()%>%
+    group_by(site, check_desc)%>%
+    summarize(named_vec = list(concept))%>%
+    unnest_wider(named_vec, names_sep="_")%>%
+    unite("top5", -c(site, check_desc), sep=", ", na.rm=TRUE)
+
   bmc_pp <- reactive({
     results_tbl('bmc_gen_output_pp')%>%
-      filter(include_new==1L)%>%
+      collect()%>%
+      left_join(top_rolled, by = c('site', 'check_desc'))%>%
+      mutate(site=case_when(config('mask_site')~site_anon,
+                            TRUE~site))
+  })
+  bmc_pp_concepts <- reactive({
+    results_tbl('bmc_gen_output_concepts_pp')%>%
       collect()%>%
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))
   })
+
   # adjust available site name
   observeEvent(bmc_pp(), {
     choices_new<-c("total", unique(bmc_pp()$site)%>%sort())
     updateSelectInput(inputId = "sitename_bmc", choices=choices_new)
+  })
+  # find the top 5 per check/site
+  bmc_pp_top <- reactive({
+    bmc_pp_concepts()%>%
+      filter(site==input$sitename_bmc&include_new==0)%>%
+      collect()%>%
+      group_by(check_desc)%>%
+      slice_max(., n=5, order_by=row_proportions) %>%
+      select(check_desc, concept, row_proportions)
+  })
+
+  # pull in the listing of concepts that are considered best/notbest
+  bmc_conceptset <- results_tbl('bmc_conceptset')%>%filter(!is.na(include))%>%collect()
+  # set up the BMC tables that will be displayed
+  output$bmc_conceptset_best<-DT::renderDataTable({
+    bmc_conceptset%>%
+      filter(include==1)%>%
+      select(check_desc, concept)
+  })
+  output$bmc_conceptset_notbest<-DT::renderDataTable({
+    bmc_conceptset%>%
+      filter(include==0)%>%
+      select(check_desc, concept)
+  })
+
+  output$bmc_pp_top_nonbest <- DT::renderDataTable({
+    bmc_pp_top()%>%
+      mutate(row_proportions=round(row_proportions,2))
   })
 
 
@@ -595,9 +642,9 @@ shinyServer(function(input, output) {
   )
   output$pf_overall_bysite_plot <- renderPlot({
     if(input$sitename_pf=="total"){
-      outplot <- ggplot(pf_output(), aes(x=check_description, y = fact_visits_prop, fill=site)) +
+      outplot <- ggplot(pf_output(), aes(x=visit_type, y = fact_visits_prop, fill=site)) +
         geom_bar(stat='identity', position="dodge")+
-        facet_wrap(~visit_type, scales="free")+
+        facet_wrap(~check_description, scales="free")+
         theme_bw()+
         scale_fill_manual(values=site_colors)+
         labs(x="Check Description",
@@ -641,28 +688,35 @@ shinyServer(function(input, output) {
 
   # ----- NEW BMC
   # best mapped concepts
-  output$bmc_overall_plot <- renderPlot({
+  output$bmc_overall_plot <- renderPlotly({
     if(input$sitename_bmc=="total"){
-      outplot <-  ggplot(bmc_pp(), aes(x=site, y=best_row_prop, fill=site))+
+      outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'),
+ aes(x=site, y=best_row_prop, fill=site,
+     text=round(best_row_prop,2)))+
         geom_bar(stat='identity')+
         scale_fill_manual(values=site_colors)+
         facet_wrap(~check_desc)+
         labs(x="Site",
              y="Proportion Best Mapped")+
         coord_flip()+
-        theme_bw()
+        theme_bw()+
+        theme(legend.position="none")
     }
     else{
-      outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc), aes(x=check_desc, y=best_row_prop, fill=site, label=round(best_row_prop,2))) +
-  geom_bar(stat='identity')+
-  geom_label(fill="white")+
+      outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc)%>%
+                          mutate(include_new=case_when(include_new==0~"No",
+                                                       include_new==1~"Yes")),
+                        aes(x=check_desc, y=best_row_prop, fill=include_new, text=paste0("Proportion ",include_new, ": ", round(best_row_prop,2),
+                                                                                         "\n",
+                                                                                         "Top non-best: ", top5)))+
+  geom_bar(stat='identity', position='stack')+
         labs(x="Check Type",
-             y="Proportion Best Mapped")+
+             y="Proportion Best Mapped",
+             fill="Best Mapped")+
         coord_flip()+
-        scale_fill_manual(values=site_colors)+
         theme_bw()
     }
-    return(outplot)
+    return(ggplotly(outplot,tooltip="text"))
   })
 
   #------------
@@ -738,36 +792,35 @@ shinyServer(function(input, output) {
     updateCheckboxGroupInput(inputId="dcon_check", choices=choices_new)
   })
   # plot of domain concordance over time
-  output$dcon_time_plot <- renderPlot({
-    if(length(input$dcon_check)==0){
-      showplot <- ggplot() +
-        geom_blank() +
-        annotate("text",label='Select a specific check', x=0,y=0)+
-        theme(axis.text.x=element_blank(),
-              axis.ticks.x=element_blank(),
-              axis.text.y=element_blank(),
-              axis.ticks.y=element_blank(),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank())+
-        labs(x="",
-             y="")
-    }else{
-      showplot <- ggplot(filter(dcon_output_byyr(),
-                                  site==input$sitename_dcon&
-                                  yr>=input$date_dcon_range[1],yr<=input$date_dcon_range[2]&
-                                  check_name%in%input$dcon_check)) +
-        geom_line(aes(x=yr,y=pats_prop,group=cohort,color=cohort, linetype="patients"), linewidth=1) +
-        geom_line(aes(x=yr,y=visits_prop,group=cohort,color=cohort, linetype="visits"), linewidth=1) +
-        scale_linetype_manual("concordance\ntype", values=c("patients"="solid", "visits"="dotted"))+
-     #   guides(linetype=guide_)
-        theme_bw()+
-        scale_x_continuous(breaks=pretty_breaks())+
-        labs(x="Year",
-             y="Proportion")+
-        facet_wrap(~check_name)
-    }
-    return(showplot)
-  })
+  # output$dcon_time_plot <- renderPlot({
+  #   if(length(input$dcon_check)==0){
+  #     showplot <- ggplot() +
+  #       geom_blank() +
+  #       annotate("text",label='Select a specific check', x=0,y=0)+
+  #       theme(axis.text.x=element_blank(),
+  #             axis.ticks.x=element_blank(),
+  #             axis.text.y=element_blank(),
+  #             axis.ticks.y=element_blank(),
+  #             panel.grid.major = element_blank(),
+  #             panel.grid.minor = element_blank())+
+  #       labs(x="",
+  #            y="")
+  #   }else{
+  #     showplot <- ggplot(filter(dcon_output_byyr(),
+  #                                 site==input$sitename_dcon&
+  #                                 yr>=input$date_dcon_range[1],yr<=input$date_dcon_range[2]&
+  #                                 check_name%in%input$dcon_check)) +
+  #       geom_line(aes(x=yr,y=value_pts,group=cohort,color=cohort, linetype="patients"), linewidth=1) +
+  #       geom_line(aes(x=yr,y=value_visits,group=cohort,color=cohort, linetype="visits"), linewidth=1) +
+  #       scale_linetype_manual("concordance\ntype", values=c("patients"="solid", "visits"="dotted"))+
+  #       theme_bw()+
+  #       scale_x_continuous(breaks=pretty_breaks())+
+  #       labs(x="Year",
+  #            y="Count")+
+  #       facet_wrap(~check_name)
+  #   }
+  #   return(showplot)
+  # })
 
   # domain concordance over all time
   output$dcon_overall_plot <- renderPlot({

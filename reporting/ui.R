@@ -136,12 +136,12 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    fluidRow(
                                      # Person facts/records overall
                                      box(title="Person Facts/Records Overall", width=12,
-                                         plotlyOutput("pf_overall_heat_plot", height=500)),
+                                         plotlyOutput("pf_overall_heat_plot", height=750)),
                                      box(title="Mapping Abbreviations and Descriptions", width=12,
                                          DT::dataTableOutput("pf_mappings")),
                                      # Person facts/records by site
                                      box(title="Person Facts/Records By Site", width=12,
-                                         plotOutput("pf_overall_bysite_plot", height=750))
+                                         plotOutput("pf_overall_bysite_plot", height=1000))
                                    )#fluidrow
                                  )#mainpanel
 
@@ -159,7 +159,17 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                      # RxNorm
                                      box(title="Best Mapped Concept Proportions",
                                          #plotlyOutput("bmc_rxnorm_overall_plot"))
-                                         plotOutput("bmc_overall_plot", height=750, width=1000))
+                                         plotlyOutput("bmc_overall_plot", height=750, width=1000)),
+                                     tabBox(width=12,
+                                            tabPanel("Concepts Considered Best",
+                                                     "For each of the checks in the table below, the concepts listed are considered the best level to map to",
+                                                     DT::dataTableOutput("bmc_conceptset_best")),
+                                            tabPanel("Concepts Considered Not-Best",
+                                                     "For each of the checks in the table below, the concepts listed are considered less than ideal levels to map to",
+                                                     DT::dataTableOutput("bmc_conceptset_notbest")),
+                                            tabPanel("Top 5 Not-Best-Mapped",
+                                                     "For each site, the top 5 not-best-mapped concepts per check is displayed below",
+                                                     DT::dataTableOutput("bmc_pp_top_nonbest")))
                                    )#fluidrow
                                  )#mainpanel
 
@@ -225,8 +235,8 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                      #plots
                                      box(title="Domain Concordance Overall",width=12,
                                          plotOutput("dcon_overall_plot")),
-                                     box(title="Domain Concordance over Time",width=12,
-                                         plotOutput("dcon_time_plot"))
+                                     # box(title="Domain Concordance over Time",width=12,
+                                     #     plotOutput("dcon_time_plot"))
                                      )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout

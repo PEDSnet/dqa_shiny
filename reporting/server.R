@@ -244,11 +244,11 @@ shinyServer(function(input, output) {
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))
   })
-  dcon_output_byyr <- reactive({
-    results_tbl(name='dcon_output_pp_byyr')%>%collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
-  })
+  # dcon_output_byyr <- reactive({
+  #   results_tbl(name='dcon_output_pp_byyr')%>%collect()%>%
+  #     mutate(site=case_when(config('mask_site')~site_anon,
+  #                           TRUE~site))
+  #})
   dcon_meta <- reactive({
     results_tbl('dcon_meta')%>%
       collect()%>%
@@ -726,7 +726,7 @@ shinyServer(function(input, output) {
   output$fot_summary_plot <- renderPlot({
         showplot <- ggplot(
           fot_output_summary() %>% filter(
-            check_desc.x==input$fot_subdomain_overall
+            check_desc==input$fot_subdomain_overall
           )
         ) + geom_line(aes(x=month_end,y=distance,group=site,color=site), linewidth=1) +
            scale_color_manual(values=site_colors,

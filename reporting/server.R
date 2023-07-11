@@ -874,6 +874,7 @@ shinyServer(function(input, output) {
                                   site==input$sitename_dcon&
                                   check_name%in%input$dcon_check)) +
         geom_bar(aes(x=cohort,y=yr_prop,fill=cohort), stat='identity') +
+        geom_label(aes(x=cohort, y=yr_prop, label=round(yr_prop, 2)))+
         theme_bw()+
         theme(axis.text.x=element_text(size=12),
               axis.text.y=element_text(size=12),

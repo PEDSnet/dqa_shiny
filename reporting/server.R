@@ -353,7 +353,9 @@ shinyServer(function(input, output) {
           geom_bar(stat='identity')+
           theme_bw()+
           scale_fill_manual(values=site_colors)+
-          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+                axis.text.y=element_text(size=12),
+                axis.title=element_text(size=16),
                 legend.position = "none")+
           facet_wrap(~domain)+
           labs(x="Site",
@@ -413,7 +415,9 @@ shinyServer(function(input, output) {
           geom_bar(stat='identity')+
           theme_bw()+
           scale_fill_manual(values=site_colors)+
-          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+                axis.text.y=element_text(size=12),
+                axis.title=element_text(size=16),
                 legend.position = "none")+
           facet_wrap(~domain)+
           labs(x="Site",
@@ -469,8 +473,9 @@ shinyServer(function(input, output) {
                                     barheight = 15,
                                     title = 'Proportion Total Change\n(log)')) +
       theme_bw()+
-      theme(axis.text.y= element_text(hjust=1),
-            axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90))
+      theme(axis.text.y= element_text(hjust=1,size=12),
+            axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
+            axis.title=element_text(size=16))
   })
 
   # value set conformance
@@ -502,7 +507,7 @@ shinyServer(function(input, output) {
     }
     return(outplot)
   })
-  output$vs_table <- renderTable({
+  output$vs_table <- DT::renderDataTable({
     if(nrow(filter(vc_vs_output(), check_type=='vs'&site==input$sitename_conf))!=0){
     outtable <-
     filter(vc_vs_output(), check_type=='vs'&site==input$sitename_conf)%>%
@@ -510,7 +515,9 @@ shinyServer(function(input, output) {
       summarise(tot_viol=as.integer(sum(tot_viol)),
                 tot_rows=as.integer(min(tot_rows)))%>% # denom is the same for all in group
       ungroup() %>%
-      select(-c(check_type, site))
+      mutate(total_violations=format(tot_viol, big.mark=','),
+              total_rows=format(tot_rows, big.mark=','))%>%
+      select(-c(check_type, site, tot_viol, tot_rows))
     }
     else{
       outtable <- tibble(None="")
@@ -547,14 +554,16 @@ shinyServer(function(input, output) {
     }
     return(outplot)
   })
-  output$vc_table <- renderTable({
+  output$vc_table <- DT::renderDataTable({
     if(nrow(filter(vc_vs_output(), check_type=='vc'&site==input$sitename_conf))!=0){
     outtable <- filter(vc_vs_output(), check_type=='vc'&site==input$sitename_conf)%>%
       group_by(site, check_type, table_application, vocabulary_id)%>%
       summarise(tot_viol=as.integer(sum(tot_viol)),
                 tot_rows=as.integer(min(tot_rows)))%>% # denom is the same for all in group
       ungroup() %>%
-      select(-c(check_type, site))
+      mutate(total_violations=format(tot_viol, big.mark=','),
+             total_rows=format(tot_rows, big.mark=','))%>%
+      select(-c(check_type, site, tot_viol, tot_rows))
     }
     else{
       outtable <- tibble(None="")
@@ -567,9 +576,10 @@ shinyServer(function(input, output) {
     if(input$sitename_uc=="total"){
       outplot <- ggplot(uc_output(), aes(x = site, y = unmapped_prop, fill=site)) +
         geom_bar(stat='identity')+
-        facet_wrap(~measure)+
+        facet_wrap(~measure, scales="free_x")+
         theme_bw()+
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
+              axis.title=element_text(size=18),
               legend.position="none")+
         scale_fill_manual(values=site_colors)+
         labs(x="Site",
@@ -581,7 +591,8 @@ shinyServer(function(input, output) {
         geom_label(fill="white")+
         theme_bw()+
         scale_fill_manual(values=site_colors)+
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
+              axis.title=element_text(size=18),
               legend.position="none")+
         labs(x="Table Application",
              y="Proportion Unmapped Concepts")
@@ -599,6 +610,10 @@ shinyServer(function(input, output) {
         labs(x = "Year",
              y = "Proportion Unmapped")+
         theme_bw()+
+        theme(axis.text.x = element_text(size=12),
+              axis.text.y = element_text(size=12),
+              axis.title=element_text(size=18),
+              legend.position="none")+
         scale_color_manual(values=site_colors)+
         scale_x_continuous(breaks = pretty_breaks())
     }
@@ -611,7 +626,10 @@ shinyServer(function(input, output) {
              y = "Proportion Unmapped")+
         theme_bw()+
         scale_color_manual(values=site_colors)+
-        theme(legend.position="none")+
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=12),
+              axis.text.y = element_text(size=12),
+              axis.title=element_text(size=18),
+              legend.position="none")+
         scale_x_continuous(breaks=pretty_breaks())
         }
     return(outplot)
@@ -649,6 +667,9 @@ shinyServer(function(input, output) {
         scale_fill_manual(values=site_colors)+
         labs(x="Check Description",
              y="Proportion Visits with Fact")+
+        theme(axis.text.x = element_text(size=12),
+              axis.text.y = element_text(size=12),
+              axis.title=element_text(size=18))+
         coord_flip()
     }
     else{
@@ -660,7 +681,10 @@ shinyServer(function(input, output) {
         scale_fill_manual(values=site_colors)+
         labs(x="Check Description",
              y="Proportion Visits with Fact")+
-        theme(legend.position="none")+
+        theme(axis.text.x = element_text(size=12),
+              axis.text.y = element_text(size=12),
+              axis.title=element_text(size=18),
+              legend.position="none")+
         coord_flip()
     }
     return(outplot)
@@ -733,6 +757,9 @@ shinyServer(function(input, output) {
                               breaks=fot_output_summary() %>% distinct(site) %>% pull())+
           scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
           theme_bw()+
+          theme(axis.text.x=element_text(size=12),
+                axis.text.y=element_text(size=12),
+                axis.title = element_text(size=16)) +
           labs(x="Month/Year")
   return(showplot)
   })
@@ -761,7 +788,10 @@ shinyServer(function(input, output) {
             ))+
         geom_line(aes(x=month_end,y=check,color=site)) +
         theme_bw()+
-        theme(legend.position='none') +
+        theme(axis.text.x=element_text(size=12),
+              axis.text.y=element_text(size=12),
+              axis.title = element_text(size=16),
+              legend.position='none') +
         scale_color_manual(values=site_colors,
                             breaks=fot_output() %>% distinct(site) %>% pull()) +
         scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
@@ -774,7 +804,10 @@ shinyServer(function(input, output) {
         geom_line(aes(x=month_end, y=m+std_dev*as.numeric(input$fot_bounds))) +
         geom_line(aes(x=month_end, y=m-std_dev*as.numeric(input$fot_bounds))) +
         theme_bw()+
-        theme(legend.position='none') +
+        theme(axis.text.x=element_text(size=12),
+              axis.text.y=element_text(size=12),
+              axis.title = element_text(size=16),
+              legend.position='none') +
         scale_color_manual(values=site_colors,
                             breaks=fot_output() %>% distinct(site) %>% pull()) +
         scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
@@ -842,7 +875,10 @@ shinyServer(function(input, output) {
                                   check_name%in%input$dcon_check)) +
         geom_bar(aes(x=cohort,y=yr_prop,fill=cohort), stat='identity') +
         theme_bw()+
-        theme(legend.position = "none")+
+        theme(axis.text.x=element_text(size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16),
+              legend.position = "none")+
         labs(x="Cohort",
              y="Proportion")+
         facet_wrap(~check_name)
@@ -860,8 +896,9 @@ shinyServer(function(input, output) {
                                       barheight = 15,
                                       title = 'Proportion Missing')) +
         theme_bw()+
-        theme(axis.text.y= element_text(hjust=1),
-              axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90))+
+        theme(axis.text.y= element_text(hjust=1, size=12),
+              axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
+              axis.title=element_text(size=16))+
         facet_wrap(~domain, scales="free_y")
 
   })
@@ -887,7 +924,9 @@ shinyServer(function(input, output) {
         geom_bar(stat='identity')+
         theme_bw()+
         scale_fill_manual(values=site_colors)+
-        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16),
               legend.position = "none")+
         facet_wrap(~domain, scales="free_y", ncol=2)+
         labs(x="Site",

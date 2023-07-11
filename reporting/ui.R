@@ -84,13 +84,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                          plotOutput("vs_plot")),
                                      box(title="Valueset Violations", width=12,
                                          p("Violations per table and vocabulary"),
-                                         tableOutput("vs_table")),
+                                         DT::dataTableOutput("vs_table")),
                                      # Vocabulary conformance
                                      box(title="Vocabulary Conformance", width=12,
                                          plotOutput("vc_plot")),
                                      box(title="Vocabulary Violations", width=12,
                                          p("Violations per table and vocabulary"),
-                                         tableOutput("vc_table")),
+                                         DT::dataTableOutput("vc_table")),
                                    )#fluidrow
                                  )#mainpanel
                                )#sidebarlayout
@@ -114,9 +114,9 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    fluidRow(
                                      # Unmapped Concepts Proportions
                                      box(title="Unmapped Concepts Overall", width=12,
-                                         plotOutput("uc_overall_plot")),
+                                         plotOutput("uc_overall_plot", height=750)),
                                      box(title="Unmapped Concepts by Year", width=12,
-                                         plotOutput("uc_yr_plot")),
+                                         plotOutput("uc_yr_plot", height=600)),
                                      box(title="Top Unmapped Concepts", width=12,
                                          p("Top 10 unmapped concepts per table application"),
                                          DT::dataTableOutput("uc_top_tbl"))

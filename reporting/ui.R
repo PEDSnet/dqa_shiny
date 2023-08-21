@@ -50,7 +50,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                                choices = NULL),
                                    selectInput(inputId = "dc_domain",
                                                label="Domain",
-                                               choices = NULL),
+                                               choices = c('adt')), # set a default to avoid empty string detection),
                                    checkboxGroupInput(inputId="dc_subdomain",
                                                       label="Specific Check",
                                                       choices=NULL)),
@@ -58,8 +58,8 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                  mainPanel(
                                    fluidRow(
                                      # DC changes - site comparison
-                                     box(title="Overall Data Cycle Changes", width=12,
-                                         plotOutput("dc_overall")),
+                                     box(title="Overall Data Cycle Changes",
+                                         plotOutput("dc_overall", height=500, width=1000)),
                                      box(title="Domain-Specific Data Cycle Changes (Records)",width=12,
                                          plotOutput("dc_domain_split")),
                                      box(title="Domain-Specific Data Cycle Changes (Persons)",width=12,
@@ -84,13 +84,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                          plotOutput("vs_plot")),
                                      box(title="Valueset Violations", width=12,
                                          p("Violations per table and vocabulary"),
-                                         tableOutput("vs_table")),
+                                         DT::dataTableOutput("vs_table")),
                                      # Vocabulary conformance
                                      box(title="Vocabulary Conformance", width=12,
                                          plotOutput("vc_plot")),
                                      box(title="Vocabulary Violations", width=12,
                                          p("Violations per table and vocabulary"),
-                                         tableOutput("vc_table")),
+                                         DT::dataTableOutput("vc_table")),
                                    )#fluidrow
                                  )#mainpanel
                                )#sidebarlayout
@@ -116,10 +116,10 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                      box(title="Unmapped Concepts Overall", width=12,
                                          plotOutput("uc_overall_plot")),
                                      box(title="Unmapped Concepts by Year", width=12,
-                                         plotOutput("uc_yr_plot")),
+                                         plotOutput("uc_yr_plot", height=750)),
                                      box(title="Top Unmapped Concepts", width=12,
                                          p("Top 10 unmapped concepts per table application"),
-                                         DT::dataTableOutput("uc_top_tbl"))
+                                         DT::dataTableOutput("uc_top_tbl", height=600))
                                    )#fluidrow
                                  )#mainpanel
 
@@ -136,12 +136,12 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                    fluidRow(
                                      # Person facts/records overall
                                      box(title="Person Facts/Records Overall", width=12,
-                                         plotlyOutput("pf_overall_heat_plot", height=500)),
+                                         plotlyOutput("pf_overall_heat_plot", height=750)),
                                      box(title="Mapping Abbreviations and Descriptions", width=12,
                                          DT::dataTableOutput("pf_mappings")),
                                      # Person facts/records by site
                                      box(title="Person Facts/Records By Site", width=12,
-                                         plotOutput("pf_overall_bysite_plot", height=750))
+                                         plotOutput("pf_overall_bysite_plot", height=1000))
                                    )#fluidrow
                                  )#mainpanel
 
@@ -157,23 +157,19 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                  mainPanel(
                                    fluidRow(
                                      # RxNorm
-                                     box(title="RxNorm Specificity", width=12,
-                                         p("Rxnorm Hierarchy Preference:"),
-                                         tags$ol(
-                                           tags$li("BPCK (Branded Pack)"),
-                                           tags$li("GPCK (Clinical Pack)"),
-                                           tags$li("SBD (Branded Drug, Quant Branded Drug)"),
-                                           tags$li("SDC (Clinical Drug, Quant Clinical Drug)"),
-                                           tags$li("SBDF (Branded Drug Form)"),
-                                           tags$li("SCDF (Clinical Drug Form)"),
-                                           tags$li("MIN (Ingredient)"),
-                                           tags$li("SBDC"),
-                                           tags$li("SCDC"),
-                                           tags$li("PIN (Ingredient)"),
-                                           tags$li("IN (Ingredient)")
-                                         ),
-                                         p("Preferred levels are 1-4"),
-                                         plotlyOutput("bmc_rxnorm_overall_plot"))
+                                     box(title="Best Mapped Concept Proportions",
+                                         #plotlyOutput("bmc_rxnorm_overall_plot"))
+                                         plotlyOutput("bmc_overall_plot", height=750, width=1000)),
+                                     tabBox(width=12,
+                                            tabPanel("Concepts Considered Best",
+                                                     "For each of the checks in the table below, the concepts listed are considered the best level to map to",
+                                                     DT::dataTableOutput("bmc_conceptset_best")),
+                                            tabPanel("Concepts Considered Not-Best",
+                                                     "For each of the checks in the table below, the concepts listed are considered less than ideal levels to map to",
+                                                     DT::dataTableOutput("bmc_conceptset_notbest")),
+                                            tabPanel("Top 5 Not-Best-Mapped",
+                                                     "For each site, the top 5 not-best-mapped concepts per check is displayed below",
+                                                     DT::dataTableOutput("bmc_pp_top_nonbest")))
                                    )#fluidrow
                                  )#mainpanel
 
@@ -238,9 +234,9 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                          DT::dataTableOutput("dcon_cohort_descr")),
                                      #plots
                                      box(title="Domain Concordance Overall",width=12,
-                                         plotOutput("dcon_overall_plot")),
-                                     box(title="Domain Concordance over Time",width=12,
-                                         plotOutput("dcon_time_plot"))
+                                         plotOutput("dcon_overall_plot"))
+                                     # box(title="Domain Concordance over Time",width=12,
+                                     #     plotOutput("dcon_time_plot"))
                                      )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout

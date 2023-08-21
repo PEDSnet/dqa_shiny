@@ -128,39 +128,66 @@ shinyServer(function(input, output) {
   })
 
   # best mapped concepts ----
-  # capture data
-  bmc_output <- reactive({
-    results_tbl('bmc_rxnorm_output')%>%collect()%>%
-      mutate(rxnorm_level_fact=case_when(rxnorm_level=="Branded Pack"~"1. BPCK",
-                                         rxnorm_level=="Clinical Pack"~"2. GPCK",
-                                         rxnorm_level=="Branded Drug"|rxnorm_level=="Quant Branded Drug"~"3. SBD",
-                                         rxnorm_level=="Clinical Drug"|rxnorm_level=="Quant Clinical Drug"~"4. SDC",
-                                         rxnorm_level=="Branded Drug Form"~"5. SBDF",
-                                         rxnorm_level=="Clinical Drug Form"~"6. SCDF",
-                                         rxnorm_level== "Ingredient"~"7. MIN",
-                                         rxnorm_level=="Branded Drug Comp"~"8. SBDC",
-                                         rxnorm_level=="Clinical Drug Comp"~"9. SCDC",
-                                         rxnorm_level=="Precise Ingredient"~"10. PIN",
-                                         TRUE~rxnorm_level)) %>%
-      mutate(rxnorm_level_fact=factor(rxnorm_level_fact, levels=c("1. BPCK",
-                                                                  "2. GPCK",
-                                                                  "3. SBD",
-                                                                  "4. SDC",
-                                                                  "5. SBDF",
-                                                                  "6. SCDF",
-                                                                  "7. MIN",
-                                                                  "8. SBDC",
-                                                                  "9. SCDC",
-                                                                  "10. PIN")),
-             site=case_when(config('mask_site')~site_anon,
-                                     TRUE~site))
+  
+  top_rolled <-  results_tbl('bmc_gen_output_concepts_pp')%>%
+    filter(include_new==0)%>%
+    collect()%>%
+    group_by(site, check_desc)%>%
+    slice_max(., n=5, order_by=row_proportions) %>%
+    select(check_desc,concept)%>%
+    ungroup()%>%
+    group_by(site, check_desc)%>%
+    summarize(named_vec = list(concept))%>%
+    unnest_wider(named_vec, names_sep="_")%>%
+    unite("top5", -c(site, check_desc), sep=", ", na.rm=TRUE)
+  
+  bmc_pp <- reactive({
+    results_tbl('bmc_gen_output_pp')%>%
+      collect()%>%
+      left_join(top_rolled, by = c('site', 'check_desc'))%>%
+      mutate(site=case_when(config('mask_site')~site_anon,
+                            TRUE~site))
   })
+  bmc_pp_concepts <- reactive({
+    results_tbl('bmc_gen_output_concepts_pp')%>%
+      collect()%>%
+      mutate(site=case_when(config('mask_site')~site_anon,
+                            TRUE~site))
+  })
+  
   # adjust available site name
-  observeEvent(bmc_output(), {
-    choices_new<-c("total", unique(bmc_output()$site)%>%sort())
+  observeEvent(bmc_pp(), {
+    choices_new<-c("total", unique(bmc_pp()$site)%>%sort())
     updateSelectInput(inputId = "sitename_bmc", choices=choices_new)
   })
-
+  # find the top 5 per check/site
+  bmc_pp_top <- reactive({
+    bmc_pp_concepts()%>%
+      filter(site==input$sitename_bmc&include_new==0)%>%
+      collect()%>%
+      group_by(check_desc)%>%
+      slice_max(., n=5, order_by=row_proportions) %>%
+      select(check_desc, concept, row_proportions)
+  })
+  
+  # pull in the listing of concepts that are considered best/notbest
+  bmc_conceptset <- results_tbl('bmc_conceptset')%>%filter(!is.na(include))%>%collect()
+  # set up the BMC tables that will be displayed
+  output$bmc_conceptset_best<-DT::renderDataTable({
+    bmc_conceptset%>%
+      filter(include==1)%>%
+      select(check_desc, concept)
+  })
+  output$bmc_conceptset_notbest<-DT::renderDataTable({
+    bmc_conceptset%>%
+      filter(include==0)%>%
+      select(check_desc, concept)
+  })
+  
+  output$bmc_pp_top_nonbest <- DT::renderDataTable({
+    bmc_pp_top()%>%
+      mutate(row_proportions=round(row_proportions,2))
+  })
 
   # facts over time ------
   # capture data
@@ -216,6 +243,12 @@ shinyServer(function(input, output) {
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))
   })
+  
+  # dcon_output_byyr <- reactive({
+  #   results_tbl(name='dcon_output_pp_byyr')%>%collect()%>%
+  #     mutate(site=case_when(config('mask_site')~site_anon,
+  #                           TRUE~site))
+  # })
   dcon_meta <- reactive({
     results_tbl('dcon_meta')%>%
       collect()%>%
@@ -247,7 +280,7 @@ shinyServer(function(input, output) {
 
   # update choices for site name
   observeEvent(mf_visitid_output(), {
-    choices_new<-unique(mf_visitid_output()$site)%>%sort()
+    choices_new<-c("total",unique(filter(mf_visitid_output(),site!='total')$site)%>%sort())
     updateSelectInput(inputId="sitename_mf_visitid", choices=choices_new)
   })
 
@@ -320,7 +353,9 @@ shinyServer(function(input, output) {
           geom_bar(stat='identity')+
           theme_bw()+
           scale_fill_manual(values=site_colors)+
-          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+                axis.text.y=element_text(size=12),
+                axis.title=element_text(size=16),
                 legend.position = "none")+
           facet_wrap(~domain)+
           labs(x="Site",
@@ -380,7 +415,9 @@ shinyServer(function(input, output) {
           geom_bar(stat='identity')+
           theme_bw()+
           scale_fill_manual(values=site_colors)+
-          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+                axis.text.y=element_text(size=12),
+                axis.title=element_text(size=16),
                 legend.position = "none")+
           facet_wrap(~domain)+
           labs(x="Site",
@@ -436,8 +473,9 @@ shinyServer(function(input, output) {
                                     barheight = 15,
                                     title = 'Proportion Total Change\n(log)')) +
       theme_bw()+
-      theme(axis.text.y= element_text(hjust=1),
-            axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90))
+      theme(axis.text.y= element_text(hjust=1,size=12),
+            axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
+            axis.title=element_text(size=16))
   })
 
   # value set conformance
@@ -469,7 +507,7 @@ shinyServer(function(input, output) {
     }
     return(outplot)
   })
-  output$vs_table <- renderTable({
+  output$vs_table <- DT::renderDataTable({
     if(nrow(filter(vc_vs_output(), check_type=='vs'&site==input$sitename_conf))!=0){
     outtable <-
     filter(vc_vs_output(), check_type=='vs'&site==input$sitename_conf)%>%
@@ -477,7 +515,9 @@ shinyServer(function(input, output) {
       summarise(tot_viol=as.integer(sum(tot_viol)),
                 tot_rows=as.integer(min(tot_rows)))%>% # denom is the same for all in group
       ungroup() %>%
-      select(-c(check_type, site))
+      mutate(total_violations=format(tot_viol, big.mark=','),
+             total_rows=format(tot_rows, big.mark=','))%>%
+      select(-c(check_type, site, tot_viol, tot_rows))
     }
     else{
       outtable <- tibble(None="")
@@ -514,14 +554,16 @@ shinyServer(function(input, output) {
     }
     return(outplot)
   })
-  output$vc_table <- renderTable({
+  output$vc_table <- DT::renderDataTable({
     if(nrow(filter(vc_vs_output(), check_type=='vc'&site==input$sitename_conf))!=0){
     outtable <- filter(vc_vs_output(), check_type=='vc'&site==input$sitename_conf)%>%
       group_by(site, check_type, table_application, vocabulary_id)%>%
       summarise(tot_viol=as.integer(sum(tot_viol)),
                 tot_rows=as.integer(min(tot_rows)))%>% # denom is the same for all in group
       ungroup() %>%
-      select(-c(check_type, site))
+      mutate(total_violations=format(tot_viol, big.mark=','),
+             total_rows=format(tot_rows, big.mark=','))%>%
+      select(-c(check_type, site, tot_viol, tot_rows))
     }
     else{
       outtable <- tibble(None="")
@@ -534,9 +576,10 @@ shinyServer(function(input, output) {
     if(input$sitename_uc=="total"){
       outplot <- ggplot(uc_output(), aes(x = site, y = unmapped_prop, fill=site)) +
         geom_bar(stat='identity')+
-        facet_wrap(~measure)+
+        facet_wrap(~measure, scales="free_x")+
         theme_bw()+
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
+              axis.title=element_text(size=18),
               legend.position="none")+
         scale_fill_manual(values=site_colors)+
         labs(x="Site",
@@ -548,7 +591,9 @@ shinyServer(function(input, output) {
         geom_label(fill="white")+
         theme_bw()+
         scale_fill_manual(values=site_colors)+
-        theme(legend.position = "none")+
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
+              axis.title=element_text(size=18),
+              legend.position="none")+
         labs(x="Table Application",
              y="Proportion Unmapped Concepts")
     }
@@ -565,6 +610,10 @@ shinyServer(function(input, output) {
         labs(x = "Year",
              y = "Proportion Unmapped")+
         theme_bw()+
+        theme(axis.text.x = element_text(size=12),
+              axis.text.y = element_text(size=12),
+              axis.title=element_text(size=18),
+              legend.position="none")+
         scale_color_manual(values=site_colors)+
         scale_x_continuous(breaks = pretty_breaks())
     }
@@ -577,7 +626,10 @@ shinyServer(function(input, output) {
              y = "Proportion Unmapped")+
         theme_bw()+
         scale_color_manual(values=site_colors)+
-        theme(legend.position="none")+
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=12),
+              axis.text.y = element_text(size=12),
+              axis.title=element_text(size=18),
+              legend.position="none")+
         scale_x_continuous(breaks=pretty_breaks())
         }
     return(outplot)
@@ -608,13 +660,16 @@ shinyServer(function(input, output) {
   )
   output$pf_overall_bysite_plot <- renderPlot({
     if(input$sitename_pf=="total"){
-      outplot <- ggplot(pf_output(), aes(x=check_description, y = fact_visits_prop, fill=site)) +
+      outplot <- ggplot(pf_output(), aes(x=visit_type, y = fact_visits_prop, fill=site)) +
         geom_bar(stat='identity', position="dodge")+
-        facet_wrap(~visit_type, scales="free")+
+        facet_wrap(~check_description, scales="free")+
         theme_bw()+
         scale_fill_manual(values=site_colors)+
         labs(x="Check Description",
              y="Proportion Visits with Fact")+
+        theme(axis.text.x = element_text(size=12),
+              axis.text.y = element_text(size=12),
+              axis.title=element_text(size=18))+
         coord_flip()
     }
     else{
@@ -626,7 +681,10 @@ shinyServer(function(input, output) {
         scale_fill_manual(values=site_colors)+
         labs(x="Check Description",
              y="Proportion Visits with Fact")+
-        theme(legend.position="none")+
+        theme(axis.text.x = element_text(size=12),
+              axis.text.y = element_text(size=12),
+              axis.title=element_text(size=18),
+              legend.position="none")+
         coord_flip()
     }
     return(outplot)
@@ -652,31 +710,35 @@ shinyServer(function(input, output) {
   })
   # best mapped concepts
   # rxnorm plot
-  output$bmc_rxnorm_overall_plot <- renderPlotly({
+  output$bmc_overall_plot <- renderPlotly({
     if(input$sitename_bmc=="total"){
-      outplot <-  ggplot(bmc_output(), aes(x=site, y=row_proportions, fill=rxnorm_level_fact,
-                                           text=paste0("level: ", rxnorm_level)))+
-        geom_bar(stat='identity', position="stack")+
+      outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'),
+                         aes(x=site, y=best_row_prop, fill=site,
+                             text=round(best_row_prop,2)))+
+        geom_bar(stat='identity')+
+        scale_fill_manual(values=site_colors)+
         facet_wrap(~check_desc)+
         labs(x="Site",
-             y="Proportion",
-             fill="RxNorm level")+
+             y="Proportion Best Mapped")+
         coord_flip()+
         theme_bw()+
-        scale_y_reverse()
+        theme(legend.position="none")
     }
     else{
-      outplot <- ggplot(filter(bmc_output(), site==input$sitename_bmc), aes(x=check_desc, y=row_proportions, fill=rxnorm_level_fact,
-                                                                            text=paste0("level: ", rxnorm_level)))+
-        geom_bar(stat='identity', position="stack")+
+      outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc)%>%
+                          mutate(include_new=case_when(include_new==0~"No",
+                                                       include_new==1~"Yes")),
+                        aes(x=check_desc, y=best_row_prop, fill=include_new, text=paste0("Proportion ",include_new, ": ", round(best_row_prop,2),
+                                                                                         "\n",
+                                                                                         "Top non-best: ", top5)))+
+        geom_bar(stat='identity', position='stack')+
         labs(x="Check Type",
-             y="Proportion",
-             fill="RxNorm level")+
+             y="Proportion Best Mapped",
+             fill = "Best Mapped")+
         coord_flip()+
-        theme_bw()+
-        scale_y_reverse()
+        theme_bw()
     }
-    return(outplot)
+    return(ggplotly(outplot,tooltip="text"))
   })
 
   # facts over time plots
@@ -684,13 +746,16 @@ shinyServer(function(input, output) {
   output$fot_summary_plot <- renderPlot({
         showplot <- ggplot(
           fot_output_summary() %>% filter(
-            check_desc.x==input$fot_subdomain_overall
+            check_desc==input$fot_subdomain_overall
           )
         ) + geom_line(aes(x=month_end,y=distance,group=site,color=site), linewidth=1) +
            scale_color_manual(values=site_colors,
                               breaks=fot_output_summary() %>% distinct(site) %>% pull())+
           scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
           theme_bw()+
+          theme(axis.text.x=element_text(size=12),
+                axis.text.y=element_text(size=12),
+                axis.title = element_text(size=16)) +
           labs(x="Month/Year")
   return(showplot)
   })
@@ -719,7 +784,10 @@ shinyServer(function(input, output) {
             ))+
         geom_line(aes(x=month_end,y=check,color=site)) +
         theme_bw()+
-        theme(legend.position='none') +
+        theme(axis.text.x=element_text(size=12),
+              axis.text.y=element_text(size=12),
+              axis.title = element_text(size=16),
+              legend.position='none') +
         scale_color_manual(values=site_colors,
                             breaks=fot_output() %>% distinct(site) %>% pull()) +
         scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
@@ -732,7 +800,10 @@ shinyServer(function(input, output) {
         geom_line(aes(x=month_end, y=m+std_dev*as.numeric(input$fot_bounds))) +
         geom_line(aes(x=month_end, y=m-std_dev*as.numeric(input$fot_bounds))) +
         theme_bw()+
-        theme(legend.position='none') +
+        theme(axis.text.x=element_text(size=12),
+              axis.text.y=element_text(size=12),
+              axis.title = element_text(size=16),
+              legend.position='none') +
         scale_color_manual(values=site_colors,
                             breaks=fot_output() %>% distinct(site) %>% pull()) +
         scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
@@ -750,33 +821,36 @@ shinyServer(function(input, output) {
     updateCheckboxGroupInput(inputId="dcon_check", choices=choices_new)
   })
   # plot of domain concordance over time
-  output$dcon_time_plot <- renderPlot({
-    if(length(input$dcon_check)==0){
-      showplot <- ggplot() +
-        geom_blank() +
-        annotate("text",label='Select a specific check', x=0,y=0)+
-        theme(axis.text.x=element_blank(),
-              axis.ticks.x=element_blank(),
-              axis.text.y=element_blank(),
-              axis.ticks.y=element_blank(),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank())+
-        labs(x="",
-             y="")
-    }else{
-      showplot <- ggplot(filter(dcon_output(), yr!=9999&
-                                  site==input$sitename_dcon&
-                                  yr>=input$date_dcon_range[1],yr<=input$date_dcon_range[2]&
-                                  check_name%in%input$dcon_check)) +
-        geom_line(aes(x=yr,y=yr_prop,group=cohort,color=cohort), linewidth=1) +
-        theme_bw()+
-        scale_x_continuous(breaks=pretty_breaks())+
-        labs(x="Year",
-             y="Proportion")+
-        facet_wrap(~check_name)
-    }
-    return(showplot)
-  })
+  # output$dcon_time_plot <- renderPlot({
+  #   if(length(input$dcon_check)==0){
+  #     showplot <- ggplot() +
+  #       geom_blank() +
+  #       annotate("text",label='Select a specific check', x=0,y=0)+
+  #       theme(axis.text.x=element_blank(),
+  #             axis.ticks.x=element_blank(),
+  #             axis.text.y=element_blank(),
+  #             axis.ticks.y=element_blank(),
+  #             panel.grid.major = element_blank(),
+  #             panel.grid.minor = element_blank())+
+  #       labs(x="",
+  #            y="")
+  #   }else{
+  #     showplot <- ggplot(filter(dcon_output_byyr(), yr!=9999&
+  #                                 site==input$sitename_dcon&
+  #                                 yr>=input$date_dcon_range[1],yr<=input$date_dcon_range[2]&
+  #                                 check_name%in%input$dcon_check)) +
+  #       geom_line(aes(x=yr,y=pats_prop,group=cohort,color=cohort, linetype="patients"), linewidth=1) +
+  #       geom_line(aes(x=yr,y=visits_prop,group=cohort,color=cohort, linetype="visits"), linewidth=1) +
+  #       scale_linetype_manual("concordance\ntype", values=c("patients"="solid", "visits"="dotted"))+
+  #       #   guides(linetype=guide_)
+  #       theme_bw()+
+  #       scale_x_continuous(breaks=pretty_breaks())+
+  #       labs(x="Year",
+  #            y="Proportion")+
+  #       facet_wrap(~check_name)
+  #   }
+  #   return(showplot)
+  # })
 
   # domain concordance over all time
   output$dcon_overall_plot <- renderPlot({
@@ -793,12 +867,16 @@ shinyServer(function(input, output) {
         labs(x="",
              y="")
     }else{
-      showplot <- ggplot(filter(dcon_output(), yr==9999&
+      showplot <- ggplot(filter(dcon_output(),
                                   site==input$sitename_dcon&
                                   check_name%in%input$dcon_check)) +
         geom_bar(aes(x=cohort,y=yr_prop,fill=cohort), stat='identity') +
+        geom_label(aes(x=cohort, y=yr_prop, label=round(yr_prop, 2)))+
         theme_bw()+
-        theme(legend.position = "none")+
+        theme(axis.text.x=element_text(size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16),
+              legend.position = "none")+
         labs(x="Cohort",
              y="Proportion")+
         facet_wrap(~check_name)
@@ -816,8 +894,9 @@ shinyServer(function(input, output) {
                                       barheight = 15,
                                       title = 'Proportion Missing')) +
         theme_bw()+
-        theme(axis.text.y= element_text(hjust=1),
-              axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90))+
+      theme(axis.text.y= element_text(hjust=1, size=12),
+            axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
+            axis.title=element_text(size=16))+
         facet_wrap(~domain, scales="free_y")
 
   })
@@ -843,7 +922,9 @@ shinyServer(function(input, output) {
         geom_bar(stat='identity')+
         theme_bw()+
         scale_fill_manual(values=site_colors)+
-        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1),
+        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16),
               legend.position = "none")+
         facet_wrap(~domain, scales="free_y", ncol=2)+
         labs(x="Site",

@@ -39,7 +39,8 @@ shinyServer(function(input, output) {
   # filter data for plotting
   dc_output <- reactive({
     results_tbl('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%collect()%>%
-      filter(str_detect(domain,input$dc_domain)) %>%
+      filter(str_detect(domain,input$dc_domain),
+             application=='rows') %>% # might be temporary fix
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))
   })

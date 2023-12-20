@@ -80,17 +80,19 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  mainPanel(
                                    fluidRow(
                                      # Valueset conformance
-                                     box(title="Valueset Conformance", width=12,
-                                         plotOutput("vs_plot")),
-                                     box(title="Valueset Violations", width=12,
-                                         p("Violations per table and vocabulary"),
-                                         DT::dataTableOutput("vs_table")),
+                                     h2("Valueset Conformance"),
+                                     tabBox(tabPanel("Violations Plot", plotOutput("vs_plot")),
+                                            tabPanel("Violations Listings", DT::dataTableOutput("vs_table")))),
+                                     # box(title="Valueset Violations", width=12,
+                                     #     p("Violations per table and vocabulary"),
+                                     #     DT::dataTableOutput("vs_table")),
                                      # Vocabulary conformance
-                                     box(title="Vocabulary Conformance", width=12,
-                                         plotOutput("vc_plot")),
-                                     box(title="Vocabulary Violations", width=12,
-                                         p("Violations per table and vocabulary"),
-                                         DT::dataTableOutput("vc_table")),
+                                     fluidRow(h2("Vocabulary Conformance"),
+                                              tabBox(
+                                                tabPanel("Violations Plot", plotOutput("vc_plot")),
+                                            tabPanel("Violations Listings", DT::dataTableOutput("vc_table")),
+                                            tabPanel("Acceptable Vocabularies",
+                                                     DT::dataTableOutput("vc_vocabs")))
                                    )#fluidrow
                                  )#mainpanel
                                )#sidebarlayout
@@ -112,15 +114,17 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
+                                     h2("Unmapped Concepts Overall"),
                                      # Unmapped Concepts Proportions
-                                     box(title="Unmapped Concepts Overall", width=12,
-                                         plotOutput("uc_overall_plot", height=750)),
-                                     box(title="Unmapped Concepts by Year", width=12,
-                                         plotOutput("uc_yr_plot", height=600)),
-                                     box(title="Top Unmapped Concepts", width=12,
-                                         p("Top 10 unmapped concepts per table application"),
-                                         DT::dataTableOutput("uc_top_tbl"))
-                                   )#fluidrow
+                                     tabBox(
+                                       tabPanel("Unmapped Concepts Plot",
+                                            plotOutput("uc_overall_plot",height=600,width=1000)),
+                                       tabPanel("Top Unmapped Source Values",
+                                                h6("Top 10 unmapped source values per column per site"),
+                                                p("For site-specific tables, proportion_of_unmapped is the count of the given source value divided by the number of unmapped rows for that column"),
+                                                DT::dataTableOutput("uc_top_tbl", width=1000)))),
+                                    fluidRow(box(title="Unmapped Concepts by Year", width=12,
+                                         plotOutput("uc_yr_plot", height=600)))
                                  )#mainpanel
 
                                )#sidebarlayout
@@ -216,13 +220,6 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    selectInput(inputId = "sitename_dcon",
                                                label = "Select Site",
                                                choices = NULL),
-                                   # sliderInput("date_dcon_range",
-                                   #             label="Date Range",
-                                   #             min=1990L,
-                                   #             max=as.integer(format(Sys.Date(), "%Y")),
-                                   #             value=c(2010L,2022L),
-                                   #             step=1L,
-                                   #             sep=""),
                                    checkboxGroupInput(inputId="dcon_check",
                                                       label="Specific Check",
                                                       choices=NULL)),
@@ -234,9 +231,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                          DT::dataTableOutput("dcon_cohort_descr")),
                                      #plots
                                      box(title="Domain Concordance Overall",width=12,
-                                         plotOutput("dcon_overall_plot")),
-                                     # box(title="Domain Concordance over Time",width=12,
-                                     #     plotOutput("dcon_time_plot"))
+                                         plotlyOutput("dcon_overall_plot")),
                                      )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout
@@ -260,7 +255,26 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout
-                      )#tabpanel for mf
+                      ),
+                      tabPanel("Expected Concepts Present",
+                               sidebarLayout(
+                                 sidebarPanel(
+                                   selectInput(inputId="sitename_ecp",
+                                               label="PEDSnet Institution",
+                                               choices = NULL)),
+                                 # Begin main
+                                 mainPanel(
+                                   fluidRow(
+                                     box(title="Overall Expected Concepts Present",
+                                         width=12,
+                                         plotOutput("ecp_plot")),
+                                     box(title="Site-Specific Expected Concepts Present",
+                                         width=12,
+                                         plotOutput("ecp_plot_site"))
+                                   )#fluidRow
+                                 )#mainPanel
+                               )#sidebarpanel
+                      )#tabpanel for ecp
            )#navbarmenu
 )#navbarpage
 )#fluidpage

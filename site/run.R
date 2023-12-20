@@ -117,12 +117,12 @@ config('retain_intermediates', NA)
 #' during processing of the request.
 #' If it is `NA`, the default value from site_info.R is used.
 #' @md
-config('results_schema', 'dqa_rox')
+config('results_schema', 'dqa_rox_dev')
 
 #' Current database version
-config('db_current', 'v51')
+config('db_current', 'v52')
 #' Previous database version
-config('db_previous', 'v50')
+config('db_previous', 'v51')
 
 #' Determine whether actual site names or masked identifiers
 #' should be shown on the app
@@ -142,7 +142,7 @@ config('mask_site', FALSE)
 #' table name length.
 #' @md
 config('results_name_tag',
-      '_op_1510')
+      NA)
 config('local_name_tag', '_loc')
 
 #' Execution mode

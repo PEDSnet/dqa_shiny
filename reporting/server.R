@@ -86,7 +86,7 @@ shinyServer(function(input, output) {
   })
 
   # acceptable vocabularies for vc
-  vc_vocabs_accept <- results_tbl('dqa_check_metadata_op_1510', results_tag=FALSE) %>%
+  vc_vocabs_accept <- results_tbl('dqa_check_metadata') %>%
     filter(check_type=='Vocabulary Conformance')%>%
     collect()%>%
     mutate(acceptable_vocabulary=gsub(".*:","",full_description))%>%
@@ -288,7 +288,7 @@ shinyServer(function(input, output) {
   #                           TRUE~site))
   #})
   dcon_meta <- reactive({
-    results_tbl('dcon_meta_op_1510')%>%
+    results_tbl('dcon_meta')%>%
       collect()%>%
       select(-check_type)%>%
       filter(check_name%in%input$dcon_check)%>%
@@ -353,9 +353,9 @@ shinyServer(function(input, output) {
   site_colors <- setNames(randomized_palette, site_list)
 
 
-  dc_mappings <- results_tbl('dc_mappings_op_1510')%>%collect()
+  dc_mappings <- results_tbl('dc_mappings')%>%collect()
 
-  pf_mappings <- results_tbl('pf_mappings_op_1510') %>%collect()%>%
+  pf_mappings <- results_tbl('pf_mappings') %>%collect()%>%
     mutate(`Visit Type`=case_when(str_detect(Label, "all")~"all",
                            str_detect(Label, "op")~"outpatient",
                            str_detect(Label, "ip")~"inpatient",

@@ -121,7 +121,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                             plotOutput("uc_overall_plot",height=600,width=1000)),
                                        tabPanel("Top Unmapped Source Values",
                                                 h6("Top 10 unmapped source values per column per site"),
-                                                p("For site-specific tables, proportion_of_unmapped is the count of the given source value divided by the number of unmapped rows for that column"),
+                                                p("proportion_of_unmapped is the count of the given source value divided by the number of unmapped rows for that column"),
                                                 DT::dataTableOutput("uc_top_tbl", width=1000)))),
                                     fluidRow(box(title="Unmapped Concepts by Year", width=12,
                                          plotOutput("uc_yr_plot", height=600)))

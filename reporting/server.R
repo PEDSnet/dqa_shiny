@@ -455,7 +455,7 @@ shinyServer(function(input, output) {
                 panel.grid.minor = element_blank())+
           labs(x="",
                y="")
-      }else if(input$dc_subdomain%in%c('specialty', 'care_site')){
+      }else if(any(input$dc_subdomain=='specialty')|any(input$dc_subdomain=='care_site')){
         showplot <- ggplot()+
           geom_blank()+
           annotate("text", label="Check not applicable at person level", x=0,y=0)+
@@ -496,7 +496,7 @@ shinyServer(function(input, output) {
                 panel.grid.minor = element_blank())+
           labs(x="",
                y="")
-      }else if(input$dc_subdomain%in%c('specialty', 'care_site')){
+      }else if(any(input$dc_subdomain=='specialty')|any(input$dc_subdomain=='care_site')){
         showplot <- ggplot()+
           geom_blank()+
           annotate("text", label="Check not applicable at person level", x=0,y=0)+

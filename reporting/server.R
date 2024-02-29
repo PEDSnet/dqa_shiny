@@ -81,8 +81,13 @@ shinyServer(function(input, output) {
   })
   # adjust available site name
   observeEvent(vc_vs_output(), {
-    choices_new<-unique(vc_vs_output()$site)%>%sort()
-    updateSelectInput(inputId = "sitename_conf", choices=choices_new)
+    sites_w_viol<-vc_vs_output()%>%filter(check_type=='vs')
+    choices_new<-c("total", unique(sites_w_viol$site)%>%sort())
+    updateSelectInput(inputId = "sitename_vs_conf", choices=choices_new)
+  })
+  observeEvent(vc_vs_output(), {
+    choices_new<-c("total", unique(vc_vs_output()$site)%>%sort())
+    updateSelectInput(inputId = "sitename_vc_conf", choices=choices_new)
   })
 
   # acceptable vocabularies for vc
@@ -528,7 +533,7 @@ shinyServer(function(input, output) {
     return(showplot)
   })
 
-  output$dc_overall <- renderPlot({
+  output$dc_overall <- renderPlotly({
     if(input$sitename_dc=='total'){
       indata <- filter(dc_output_all(), application=='rows')
     }
@@ -536,24 +541,37 @@ shinyServer(function(input, output) {
       indata <- filter(dc_output_all(),site==input$sitename_dc&
                          application=='rows')
     }
-    low.lim <- min(indata$prop_total_change, na.rm = TRUE)
-    hi.lim  <- max(indata$prop_total_change, na.rm = TRUE)
-    ggplot(indata, aes(x=site, y=domain, fill=prop_total_change))+
+    plt<-ggplot(indata%>%mutate(text=paste0("site: ",site,
+                                            "\ndomain: ",domain,
+                                            "\nproportion change: ",prop_total_change)),
+                aes(x=site, y=domain, fill=abs(prop_total_change), text=text))+
       geom_tile(color='white',lwd=0.5,linetype=1) +
       scale_fill_gradient(trans='log')+
       guides(fill = guide_colourbar(barwidth=0.5,
                                     barheight = 15,
-                                    title = 'Proportion Total Change\n(log)')) +
+                                    title = 'Absolute Value\nProportion Total Change\n(log)')) +
       theme_bw()+
       theme(axis.text.y= element_text(hjust=1,size=12),
             axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
             axis.title=element_text(size=16))
+    return(ggplotly(plt, tooltip="text"))
   })
 
   # value set conformance
   output$vs_plot <- renderPlot({
-    if(nrow(filter(vc_vs_violations(), check_type=='vs'&site==input$sitename_conf))>0){
-      outplot<-ggplot(filter(vc_vs_violations(), check_type=='vs'&site==input$sitename_conf), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
+    if(input$sitename_vs_conf=='total'){
+      outplot<-ggplot(filter(vc_vs_violations(),check_type=='vs'),
+                     aes(x=site, y=tot_prop, fill=vocabulary_id))+
+        geom_bar(stat="identity",position="dodge")+
+        facet_wrap(~measurement_column, scales="free_x")+
+        ylim(0,1)+
+        theme_bw()+
+        labs(y="Proportion of Total Records",
+             title="Violating Records per Column")
+
+    }
+    else if(nrow(filter(vc_vs_violations(), check_type=='vs'&site==input$sitename_vs_conf))>0){
+      outplot<-ggplot(filter(vc_vs_violations(), check_type=='vs'&site==input$sitename_vs_conf), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
         geom_bar(stat="identity", position="dodge") +
         geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
                    position=position_dodge(),
@@ -580,8 +598,14 @@ shinyServer(function(input, output) {
     return(outplot)
   })
   output$vs_table <- DT::renderDataTable({
-    if(nrow(filter(vc_vs_violations(), check_type=='vs'&site==input$sitename_conf))!=0){
-      outtable <-filter(vc_vs_violations(), check_type=='vs'&site==input$sitename_conf)%>%
+    if(input$sitename_vs_conf=='total'){
+      outtable <-filter(vc_vs_violations(), check_type=='vs')%>%
+        mutate(total_violations=format(tot_ct, big.mark=','),
+               total_rows=format(total_denom_ct, big.mark=','))%>%
+        select(site, table_application, vocabulary_id, total_violations, total_rows)
+    }
+    else if(nrow(filter(vc_vs_violations(), check_type=='vs'&site==input$sitename_vs_conf))!=0){
+      outtable <-filter(vc_vs_violations(), check_type=='vs'&site==input$sitename_vs_conf)%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
                total_rows=format(total_denom_ct, big.mark=','))%>%
         select(table_application, vocabulary_id, total_violations, total_rows)
@@ -600,13 +624,52 @@ shinyServer(function(input, output) {
     return(outtable)
   })
   # vocabulary conformance
-  output$vc_plot <- renderPlot({
-    if(nrow(filter(vc_vs_violations(), check_type=='vc'&site==input$sitename_conf))>0){
-      outplot<-ggplot(filter(vc_vs_violations(), check_type=='vc'&site==input$sitename_conf), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
+  output$vc_overall_plot <- renderPlotly({
+    if(input$sitename_vc_conf=='total'){
+    plt<-ggplot(filter(vc_vs_violations(), check_type=='vc')%>%
+                  mutate(text=paste0("site: ",site,
+                                     "\nvocabulary: ",vocabulary_id,
+                                     "\nproportion: ",prop_viol)),
+           aes(x=site,y=tot_prop, fill=vocabulary_id, text=text))+
+      geom_bar(stat="identity",position="stack")+
+      facet_wrap(~measurement_column)+
+      theme_bw()+
+      theme(axis.text.x = element_text(angle=90))
+    }else{
+      plt<-ggplot(filter(vc_vs_violations(), check_type=='vc'&site==input$sitename_vc_conf)%>%
+                    mutate(text=paste0("site: ",site,
+                                       "\nvocabulary: ",vocabulary_id,
+                                       "\nproportion: ",prop_viol)),
+                  aes(x=measurement_column,y=tot_prop, fill=vocabulary_id, text=text))+
+        geom_bar(stat="identity",position="stack")+
+        theme_bw()+
+        theme(axis.text.x = element_text(angle=90))+
+        labs(x="Column",
+             y="Proportion of Records")
+    }
+    ggplotly(plt, tooltip="text")
+  })
+
+
+  output$vc_plot <- renderPlotly({
+    if(input$sitename_vc_conf=='total'){
+      outplot<-ggplot(filter(vc_vs_violations(),check_type=='vc'&!accepted_value)%>%
+                        mutate(text=paste0("vocabulary: ",vocabulary_id,
+                                           "\nproportion: ",prop_viol)),
+                      aes(x=site,y=tot_prop,fill=vocabulary_id, text=text))+
+        geom_bar(stat="identity", position="stack")+
+        ylim(0,1)+
+        theme_bw()+
+        theme(axis.text.x = element_text(angle=90))+
+        facet_wrap(~measurement_column)
+    }else if(nrow(filter(vc_vs_violations(), check_type=='vc'&site==input$sitename_vc_conf&!accepted_value))>0){
+      outplot<-ggplot(filter(vc_vs_violations(), check_type=='vc'&site==input$sitename_vc_conf&!accepted_value)%>%
+                        mutate(text=paste0("vocabulary: ",vocabulary_id,
+                                           "\nproportion: ",prop_viol)), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id, text=text)) +
         geom_bar(stat="identity", position="dodge") +
-        geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
-                   position=position_dodge(width=0.9),
-                   show.legend = FALSE)+
+        # geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
+        #            position=position_dodge(width=0.9),
+        #            show.legend = FALSE)+
         ylim(0, 1)+
         facet_wrap(~table_application, scales="free")+
         theme_bw()+
@@ -627,11 +690,16 @@ shinyServer(function(input, output) {
         labs(x="",
              y="")
     }
-    return(outplot)
+    return(ggplotly(outplot, tooltip="text"))
   })
   output$vc_table <- DT::renderDataTable({
-    if(nrow(filter(vc_vs_violations(), check_type=='vc'&site==input$sitename_conf))!=0){
-      outtable <-filter(vc_vs_violations(), check_type=='vc'&site==input$sitename_conf)%>%
+    if(input$sitename_vc_conf=='total'){
+      outtable <-filter(vc_vs_violations(), check_type=='vc'&!accepted_value)%>%
+        mutate(total_violations=format(tot_ct, big.mark=','),
+               total_rows=format(total_denom_ct, big.mark=','))%>%
+        select(site, table_application, vocabulary_id, total_violations, total_rows)
+    }else if(nrow(filter(vc_vs_violations(), check_type=='vc'&site==input$sitename_vc_conf&!accepted_value))!=0){
+      outtable <-filter(vc_vs_violations(), check_type=='vc'&site==input$sitename_vc_conf&!accepted_value)%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
                total_rows=format(total_denom_ct, big.mark=','))%>%
         select(table_application, vocabulary_id, total_violations, total_rows)
@@ -1068,6 +1136,46 @@ shinyServer(function(input, output) {
       theme(legend.position = "none")+
       coord_flip()
   })
+
+  ### SSDQA ISSUES
+  # adjust available site name
+
+#   ssdqa_issues <- reactive({results_tbl('ssdqa_issues_ops_226', results_tag=FALSE)%>%collect()})
+#
+#   observeEvent(ssdqa_issues(), {
+#     choices_new <- ssdqa_issues()%>%
+#       mutate(domains_wd=str_remove(domains," \\(labs, anthro, and/or vitals\\)"))%>%
+#       separate_rows(domains_wd, sep=", ")%>%distinct(domains_wd)%>%pull()%>%sort()
+#
+#     choices_new<-c("All",choices_new)
+#     updateSelectInput(inputId="ssdqa_domain", choices=choices_new)
+#   })
+#
+#   output$ssdqa_issues_table<-DT::renderDT({
+#     if(config('mask_site')){return_tbl<-data.frame()}
+#     else if(input$ssdqa_domain=='All'){
+#       return_tbl<-ssdqa_issues()
+#     }else if("condition_occurrence"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"condition_occurrence"))
+#     }else if("drug_exposure"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"drug_exposure"))
+#     }else if("measurement"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"measurement"))
+#     }else if("person"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"person"))
+#     }else if("visit_occurrence"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"visit_occurrence"))
+#     }else if("visit_payer"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"measurement"))
+#     }
+#     DT::datatable(
+#       return_tbl,
+#       filter="top",
+#       options=list(pageLength=5),
+#       rownames=FALSE
+#     )
+# })
+
 })
 
 

@@ -11,6 +11,7 @@ library(shiny)
 library(markdown)
 library(shinydashboard)
 library(plotly)
+library(gt)
 source('../site/run.R')
 
 
@@ -59,7 +60,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    fluidRow(
                                      # DC changes - site comparison
                                      box(title="Overall Data Cycle Changes",
-                                         plotOutput("dc_overall", height=500, width=1000)),
+                                         plotlyOutput("dc_overall", height=500, width=1000)),
                                      box(title="Domain-Specific Data Cycle Changes (Records)",width=12,
                                          plotOutput("dc_domain_split")),
                                      box(title="Domain-Specific Data Cycle Changes (Persons)",width=12,
@@ -70,26 +71,34 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  )#mainPanel
                                )#sidebarlayout
                       ),#tabpanel for changes between data cycles
-                      tabPanel("Conformance",
+                      tabPanel("Valueset Conformance",
                                sidebarLayout(
                                  sidebarPanel(
-                                 selectInput(inputId = "sitename_conf",
+                                 selectInput(inputId = "sitename_vs_conf",
                                              label = "Institution",
                                              choices = NULL)),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
-                                     # Valueset conformance
-                                     h2("Valueset Conformance"),
-                                     tabBox(tabPanel("Violations Plot", plotOutput("vs_plot")),
-                                            tabPanel("Violations Listings", DT::dataTableOutput("vs_table")))),
-                                     # box(title="Valueset Violations", width=12,
-                                     #     p("Violations per table and vocabulary"),
-                                     #     DT::dataTableOutput("vs_table")),
-                                     # Vocabulary conformance
-                                     fluidRow(h2("Vocabulary Conformance"),
+                                     p("Note that sites only show up if there is at least one violation"),
+                                     box(title="Valueset Violations Plot", width=12, plotOutput("vs_plot")),
+                                     box(title="Violations Listings", width=12, DT::dataTableOutput("vs_table"))
+                                     )
+                                 )
+                               )),
+                      tabPanel("Vocabulary Conformance",
+                               sidebarLayout(
+                                 sidebarPanel(
+                                   selectInput(inputId="sitename_vc_conf",
+                                               label="Institution",
+                                               choices=NULL)),
+                                 mainPanel(
+                                     fluidRow(p("Note: Proportions are of the total rows in the table. Proportions that do not add up to 1 for the given column indicate missing values."),
+                                              box(title="Overall Vocabularies",
+                                                  plotlyOutput("vc_overall_plot", height=500, width=1000))),
+                                     fluidRow(
                                               tabBox(
-                                                tabPanel("Violations Plot", plotOutput("vc_plot")),
+                                                tabPanel("Vocabulary Conformance Violations Plot", plotlyOutput("vc_plot")),
                                             tabPanel("Violations Listings", DT::dataTableOutput("vc_table")),
                                             tabPanel("Acceptable Vocabularies",
                                                      DT::dataTableOutput("vc_vocabs")))
@@ -276,6 +285,16 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                )#sidebarpanel
                       )#tabpanel for ecp
            )#navbarmenu
+           # tabPanel(title="SSDQA Issues", icon=icon("square-check"),
+           #          sidebarLayout(
+           #            sidebarPanel(
+           #              selectInput(inputId = "ssdqa_domain",
+           #                          label = "Select Domain",
+           #                          choices = NULL)
+           #            ),
+           #            mainPanel(
+           #              DT::DTOutput("ssdqa_issues_table")
+           #            )))
 )#navbarpage
 )#fluidpage
 )#shinyUI

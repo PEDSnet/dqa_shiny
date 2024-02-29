@@ -541,9 +541,13 @@ shinyServer(function(input, output) {
       indata <- filter(dc_output_all(),site==input$sitename_dc&
                          application=='rows')
     }
+    tc_prev<-paste0('total_ct_',config('db_previous'))
+    tc_new<-paste0('total_ct_',config('db_current'))
     plt<-ggplot(indata%>%mutate(text=paste0("site: ",site,
                                             "\ndomain: ",domain,
-                                            "\nproportion change: ",prop_total_change)),
+                                            "\nproportion change: ",prop_total_change,
+                                            "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
+                                            "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
                 aes(x=site, y=domain, fill=abs(prop_total_change), text=text))+
       geom_tile(color='white',lwd=0.5,linetype=1) +
       scale_fill_gradient(trans='log')+
@@ -632,7 +636,7 @@ shinyServer(function(input, output) {
                                      "\nproportion: ",prop_viol)),
            aes(x=site,y=tot_prop, fill=vocabulary_id, text=text))+
       geom_bar(stat="identity",position="stack")+
-      facet_wrap(~measurement_column)+
+      facet_wrap(~table_application*measurement_column)+
       theme_bw()+
       theme(axis.text.x = element_text(angle=90))
     }else{

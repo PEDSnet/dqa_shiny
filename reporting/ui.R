@@ -97,11 +97,15 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                               box(title="Overall Vocabularies",
                                                   plotlyOutput("vc_overall_plot", height=500, width=1000))),
                                      fluidRow(
-                                              tabBox(
+                                       column(
+                                         width=12,
+                                         align='left',
+                                              tabBox(width='100%',
                                                 tabPanel("Vocabulary Conformance Violations Plot", plotlyOutput("vc_plot")),
                                             tabPanel("Violations Listings", DT::dataTableOutput("vc_table")),
                                             tabPanel("Acceptable Vocabularies",
                                                      DT::dataTableOutput("vc_vocabs")))
+                                       )#column
                                    )#fluidrow
                                  )#mainpanel
                                )#sidebarlayout

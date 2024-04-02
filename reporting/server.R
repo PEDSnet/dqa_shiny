@@ -353,6 +353,7 @@ shinyServer(function(input, output) {
   pf_mappings <- results_tbl('pf_mappings') %>%collect()%>%
     mutate(`Visit Type`=case_when(str_detect(Label, "all")~"all",
                                   str_detect(Label, "op")~"outpatient",
+                                  str_detect(Label, "long_ip")~"long_inpatient",
                                   str_detect(Label, "ip")~"inpatient",
                                   str_detect(Label, "ed")~"emergency"))%>%
     select(`Visit Type`, Description)
@@ -549,7 +550,7 @@ shinyServer(function(input, output) {
                                             "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
                                             "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
                 aes(x=site, y=domain, fill=abs(prop_total_change), text=text))+
-      geom_tile(color='white',lwd=0.5,linetype=1) +
+      geom_tile()+
       scale_fill_gradient(trans='log')+
       guides(fill = guide_colourbar(barwidth=0.5,
                                     barheight = 15,
@@ -768,8 +769,7 @@ shinyServer(function(input, output) {
         theme_bw()+
         theme(axis.text.x = element_text(size=12),
               axis.text.y = element_text(size=12),
-              axis.title=element_text(size=18),
-              legend.position="none")+
+              axis.title=element_text(size=18))+
         scale_color_manual(values=site_colors)+
         scale_x_continuous(breaks = pretty_breaks())
     }
@@ -784,8 +784,7 @@ shinyServer(function(input, output) {
         scale_color_manual(values=site_colors)+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=12),
               axis.text.y = element_text(size=12),
-              axis.title=element_text(size=18),
-              legend.position="none")+
+              axis.title=element_text(size=18))+
         scale_x_continuous(breaks=pretty_breaks())
     }
     return(outplot)

@@ -343,9 +343,10 @@ shinyServer(function(input, output) {
   site_list<-(results_tbl("dc_output_pp") %>% select(site, site_anon)%>%distinct()%>%collect()%>%
                 mutate(site=case_when(config('mask_site')~site_anon,
                                       TRUE~site)))$site
-  ramp_palette <- colorRampPalette(brewer.pal(8, "Dark2"))(length(site_list))
-  randomized_palette <- ramp_palette[sample(1:length(ramp_palette))]
-  site_colors <- setNames(randomized_palette, site_list)
+  #ramp_palette <- colorRampPalette(brewer.pal(8, "Dark2"))(length(site_list))
+  ramp_palette<-pedsn_dq_pal(palette="main", reverse=FALSE)(length(site_list))
+ # randomized_palette <- ramp_palette[sample(1:length(ramp_palette))]
+  site_colors <- setNames(ramp_palette, site_list)
 
 
   dc_mappings <- results_tbl('dc_mappings')%>%collect()
@@ -544,17 +545,16 @@ shinyServer(function(input, output) {
     }
     tc_prev<-paste0('total_ct_',config('db_previous'))
     tc_new<-paste0('total_ct_',config('db_current'))
-    plt<-ggplot(indata%>%mutate(text=paste0("site: ",site,
+    plt<-ggplot(indata%>%mutate(
+                                text=paste0("site: ",site,
                                             "\ndomain: ",domain,
                                             "\nproportion change: ",prop_total_change,
                                             "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
                                             "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
-                aes(x=site, y=domain, fill=abs(prop_total_change), text=text))+
+                aes(x=site, y=domain, fill=prop_total_change, text=text))+
       geom_tile()+
-      scale_fill_gradient(trans='log')+
-      guides(fill = guide_colourbar(barwidth=0.5,
-                                    barheight = 15,
-                                    title = 'Absolute Value\nProportion Total Change\n(log)')) +
+      scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
+      guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
       theme_bw()+
       theme(axis.text.y= element_text(hjust=1,size=12),
             axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
@@ -568,6 +568,7 @@ shinyServer(function(input, output) {
       outplot<-ggplot(filter(vc_vs_output(),check_type=='vs'),
                      aes(x=site, y=tot_prop, fill=vocabulary_id))+
         geom_bar(stat="identity",position="dodge")+
+        scale_fill_pedsn_dq()+
         facet_wrap(~measurement_column, scales="free_x")+
         ylim(0,1)+
         theme_bw()+
@@ -637,6 +638,7 @@ shinyServer(function(input, output) {
                                      "\nproportion: ",prop_viol)),
            aes(x=site,y=tot_prop, fill=vocabulary_id, text=text))+
       geom_bar(stat="identity",position="stack")+
+      scale_fill_pedsn_dq()+
       facet_wrap(~table_application*measurement_column)+
       theme_bw()+
       theme(axis.text.x = element_text(angle=90))
@@ -648,6 +650,7 @@ shinyServer(function(input, output) {
                   aes(x=measurement_column,y=tot_prop, fill=vocabulary_id, text=text))+
         geom_bar(stat="identity",position="stack")+
         theme_bw()+
+        scale_fill_pedsn_dq()+
         theme(axis.text.x = element_text(angle=90))+
         labs(x="Column",
              y="Proportion of Records")
@@ -665,6 +668,7 @@ shinyServer(function(input, output) {
         geom_bar(stat="identity", position="stack")+
         ylim(0,1)+
         theme_bw()+
+        scale_fill_pedsn_dq()+
         theme(axis.text.x = element_text(angle=90))+
         facet_wrap(~measurement_column)
     }else if(nrow(filter(vc_vs_output(), check_type=='vc'&site==input$sitename_vc_conf&!accepted_value))>0){
@@ -677,6 +681,7 @@ shinyServer(function(input, output) {
         #            show.legend = FALSE)+
         ylim(0, 1)+
         facet_wrap(~table_application, scales="free")+
+        scale_fill_pedsn_dq()+
         theme_bw()+
         labs(x="Column Name",
              y="Proportion of Total Records",
@@ -890,6 +895,7 @@ shinyServer(function(input, output) {
                                                                                          "\n",
                                                                                          "Top non-best: ", top5)))+
         geom_bar(stat='identity', position='stack')+
+        scale_fill_pedsn_dq("boldtwo")+
         labs(x="Check Type",
              y="Proportion Best Mapped",
              fill="Best Mapped")+
@@ -1034,6 +1040,7 @@ shinyServer(function(input, output) {
                      text=paste0("Cohort: ", cohort,
                                  "\nProportion: ",round(prop,2))),
                  stat='identity') +
+        scale_fill_pedsn_dq("triset")+
         theme_bw()+
         theme(axis.text.x=element_text(size=12),
               axis.text.y=element_text(size=12),
@@ -1051,6 +1058,7 @@ shinyServer(function(input, output) {
                      text=paste0("Cohort: ", cohort,
                                  "\nProportion: ",round(prop,2))),
                  stat='identity') +
+        scale_fill_pedsn_dq("triset")+
         theme_bw()+
         theme(axis.text.x=element_text(size=12),
               axis.text.y=element_text(size=12),

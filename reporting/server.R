@@ -8,18 +8,24 @@ library(scales)
 library(DT)
 library(tidyr)
 library(RColorBrewer)
-
+library(forcats)
 
 
 shinyServer(function(input, output) {
   # changes between data cycles -------
   # capture data
   dc_output_all <- reactive({
-    results_tbl('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%collect() %>%
+    rslt<-results_tbl('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%collect() %>%
       mutate(site=case_when(site=='total'~'total',
                             TRUE ~ site)) %>%
-      mutate(site=case_when(config('mask_site')~site_anon,
+      mutate(site=case_when(config('mask_site')~as.factor(site_anon),
                             TRUE~site))
+     # if(config('mask_site')){
+     #   rslt<-rslt%>%
+     #     mutate(site=as.factor(site))%>%
+     #     mutate(site=fct_reorder(site, sitenum, .na_rm=FALSE))
+     # }
+    return(rslt)
   })
 
   # adjust available site name
@@ -38,12 +44,18 @@ shinyServer(function(input, output) {
 
   # filter data for plotting
   dc_output <- reactive({
-    results_tbl('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
+    rslt<-results_tbl('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
       # select(-c(check_name_app, application,threshold))%>%distinct()%>%# might be temporary fix
       collect()%>%
       filter(str_detect(domain,input$dc_domain)) %>%
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))
+    # if(config('mask_site')){
+    #   rslt<-rslt%>%
+    #     mutate(site=as.factor(site))%>%
+    #     mutate(site=fct_reorder(site, sitenum, .na_rm=FALSE))
+    # }
+    return(rslt)
   })
 
   # update choices for subdomain
@@ -56,11 +68,17 @@ shinyServer(function(input, output) {
   # vocabulary and valueset conformance ------------
   # capture data
   vc_vs_output <- reactive({
-    results_tbl('vc_vs_output_pp')%>%
+    rslt<-results_tbl('vc_vs_output_pp')%>%
       collect() %>%
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))%>%
       mutate(prop_viol=round(tot_prop,2))
+    # if(config('mask_site')){
+    #   rslt<-rslt%>%
+    #     mutate(site=as.factor(site))%>%
+    #     mutate(site=fct_reorder(site, sitenum))
+    # }
+    return(rslt)
   })
 
   vc_vs_violations <- reactive({
@@ -100,15 +118,27 @@ shinyServer(function(input, output) {
   # unmapped concepts -----
   # capture data
   uc_output <- reactive({
-    results_tbl('uc_output_pp') %>%collect()%>%
+    rslt<-results_tbl('uc_output_pp') %>%collect()%>%
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))
+    # if(config('mask_site')){
+    #   rslt<-rslt%>%
+    #     mutate(site=as.factor(site))%>%
+    #     mutate(site=fct_reorder(site, sitenum))
+    # }
+    return(rslt)
   })
   uc_yr_output <- reactive({
-    results_tbl('uc_by_year_pp') %>%collect()%>%
+    rslt<-results_tbl('uc_by_year_pp') %>%collect()%>%
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))%>%
       mutate(year_date=as.integer(year_date))
+    # if(config('mask_site')){
+    #   rslt<-rslt%>%
+    #     mutate(site=as.factor(site))%>%
+    #     mutate(site=fct_reorder(site, sitenum))
+    # }
+    return(rslt)
   })
   uc_top_output <- reactive({
     results_tbl('uc_grpd_pp') %>% collect()%>%
@@ -144,9 +174,15 @@ shinyServer(function(input, output) {
   # person facts/records -------
   # capture data
   pf_output <- reactive({
-    results_tbl('pf_output_pp') %>% collect() %>%
-      mutate(check_site=case_when(config('mask_site')~site_anon,
+    rslt<-results_tbl('pf_output_pp') %>% collect() %>%
+      mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))
+    # if(config('mask_site')){
+    #   rslt<-rslt%>%
+    #     mutate(site=as.factor(site))%>%
+    #     mutate(site=fct_reorder(site, sitenum))
+    # }
+    return(rslt)
   })
   # adjust available site name
   observeEvent(pf_output(), {
@@ -219,6 +255,22 @@ shinyServer(function(input, output) {
 
   # facts over time ------
   # capture data
+  fot_output_summary_ratio <- reactive({results_tbl('fot_output_mnth_ratio_pp') %>%
+      collect() %>%
+      mutate(site=case_when(config('mask_site')~site_anon,
+                            TRUE~site))
+  })
+  # # update domain choices
+  observeEvent(fot_output_summary_ratio(), {
+    choices_new_fot<-unique(fot_output_summary_ratio()$domain)%>%sort()
+    updateSelectInput(inputId="fot_domain", choices=choices_new_fot)
+  })
+  # # update subdomains
+  observeEvent(input$fot_domain, {
+    choices_new_fot<-unique((fot_output_summary_ratio()%>%filter(domain==input$fot_domain))$check_desc)%>%sort()
+    updateSelectInput(inputId="fot_subdomain_overall", choices=choices_new_fot)
+  })
+
   fot_output_heuristic <- reactive({results_tbl('fot_heuristic_summary_pp') %>%
       filter(domain!='labs')%>% # remove in future versions
       collect()%>%
@@ -227,10 +279,10 @@ shinyServer(function(input, output) {
   })
 
   # update choices for domain
-  observeEvent(fot_output_heuristic(), {
-    choices_new_fot<-unique(fot_output_heuristic()$domain)%>%sort()
-    updateSelectInput(inputId="fot_domain", choices=choices_new_fot)
-  })
+  # observeEvent(fot_output_heuristic(), {
+  #   choices_new_fot<-unique(fot_output_heuristic()$domain)%>%sort()
+  #   updateSelectInput(inputId="fot_domain", choices=choices_new_fot)
+  # })
 
   # limit table to domain selected for specific check choices
   fot_output <- reactive({results_tbl('fot_heuristic_pp') %>%
@@ -909,21 +961,47 @@ shinyServer(function(input, output) {
 
   # facts over time plots
   # overall plot
-  output$fot_summary_plot <- renderPlot({
+  output$fot_summary_plot <- renderPlotly({
+    allsite_avg<-fot_output_summary_ratio()%>%filter(site=='allsite_median')#%>%
+      # mutate(mt=as.character(month_end))%>%
+      # mutate(text=paste0("Site: ",site,
+      #                    "\nMonth: ",mt))
     showplot <- ggplot(
-      fot_output_summary() %>% filter(
-        check_desc==input$fot_subdomain_overall
-      )
-    ) + geom_line(aes(x=month_end,y=distance,group=site,color=site), linewidth=1) +
-      scale_color_manual(values=site_colors,
-                         breaks=fot_output_summary() %>% distinct(site) %>% pull())+
-      scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
+      fot_output_summary_ratio() %>%
+        filter(check_desc==input$fot_subdomain_overall&site!='allsite_median'),#%>%
+        # mutate(mt=as.character(month_end))%>%
+        # mutate(text=paste0("Site: ",site,
+        #                    "\nMonth: ",mt)),
+      aes(x=month_end,
+          y=row_ratio,
+          color=site,
+          group=site)
+    )+
+      geom_smooth(se=TRUE,alpha=0.1,linewidth=0.5,formula=y~x)+
+      geom_smooth(data=allsite_avg, aes(x=month_end,
+                                      y=row_ratio,
+                                      color=site,
+                                      group=site), linewidth=1.5)+
+     # geom_point(aes(text=text),size=0.00000001)+
+      scale_color_manual(values=site_colors) +
       theme_bw()+
-      theme(axis.text.x=element_text(size=12),
-            axis.text.y=element_text(size=12),
-            axis.title = element_text(size=16)) +
-      labs(x="Month/Year")
-    return(showplot)
+      labs(x="Time (month)",
+           y="Fact Rate (records per 10,000 visits)",
+           title="Fact Rate over Time")
+    # showplot <- ggplot(
+    #   fot_output_summary() %>% filter(
+    #     check_desc==input$fot_subdomain_overall
+    #   )
+    # ) + geom_line(aes(x=month_end,y=distance,group=site,color=site), linewidth=1) +
+    #   scale_color_manual(values=site_colors,
+    #                      breaks=fot_output_summary() %>% distinct(site) %>% pull())+
+    #   scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
+    #   theme_bw()+
+    #   theme(axis.text.x=element_text(size=12),
+    #         axis.text.y=element_text(size=12),
+    #         axis.title = element_text(size=16)) +
+    #   labs(x="Month/Year")
+    return(ggplotly(showplot))
   })
   # site-specific plot
   output$fot_plot <- renderPlot({
@@ -1149,13 +1227,13 @@ shinyServer(function(input, output) {
   })
 
   ### SSDQA ISSUES
-  # adjust available site name
+  # adjust available domain
 
 #   ssdqa_issues <- reactive({results_tbl('ssdqa_issues_ops_226', results_tag=FALSE)%>%collect()})
 #
 #   observeEvent(ssdqa_issues(), {
 #     choices_new <- ssdqa_issues()%>%
-#       mutate(domains_wd=str_remove(domains," \\(labs, anthro, and/or vitals\\)"))%>%
+#       mutate(domains_wd=str_remove(domains," \\(labs, anthro, vitals\\)|\\(care site, provider\\)|(history, fips)"))%>%
 #       separate_rows(domains_wd, sep=", ")%>%distinct(domains_wd)%>%pull()%>%sort()
 #
 #     choices_new<-c("All",choices_new)
@@ -1166,19 +1244,40 @@ shinyServer(function(input, output) {
 #     if(config('mask_site')){return_tbl<-data.frame()}
 #     else if(input$ssdqa_domain=='All'){
 #       return_tbl<-ssdqa_issues()
+#     }else if("adt_occurrence"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"adt_occurrence"))
 #     }else if("condition_occurrence"%in%input$ssdqa_domain){
 #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"condition_occurrence"))
+#     }else if("device_exposure"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"device_exposure"))
 #     }else if("drug_exposure"%in%input$ssdqa_domain){
 #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"drug_exposure"))
+#     }else if("fact_relationship"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"fact_relationship"))
+#     }else if("hash_token"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"hash_token"))
+#     }else if("immunization"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"immunization"))
+#     }else if("location"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"location"))
 #     }else if("measurement"%in%input$ssdqa_domain){
 #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"measurement"))
+#     }else if("observation"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"observation"))
 #     }else if("person"%in%input$ssdqa_domain){
 #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"person"))
+#     }else if("procedure_occurrence"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"procedure_occurrence"))
+#     }else if("specialty"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"specialty"))
 #     }else if("visit_occurrence"%in%input$ssdqa_domain){
 #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"visit_occurrence"))
 #     }else if("visit_payer"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"measurement"))
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"visit_payer"))
+#     }else if("other"%in%input$ssdqa_domain){
+#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"other"))
 #     }
+#     if(!exists("return_tbl")){return_tbl<-NULL}
 #     DT::datatable(
 #       return_tbl,
 #       filter="top",

@@ -220,7 +220,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    fluidRow(
                                      #summary
                                      box(title="Summary Plots",width=12,
-                                         plotOutput("fot_summary_plot")),
+                                         plotlyOutput("fot_summary_plot")),
                                      box(title="Site Specific Facts Over Time",width=12,
                                          plotOutput("fot_plot"))
                                    )#fluidRow
@@ -288,7 +288,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  )#mainPanel
                                )#sidebarpanel
                       )#tabpanel for ecp
-           )#navbarmenu
+           )#,#navbarmenu
            # tabPanel(title="SSDQA Issues", icon=icon("square-check"),
            #          sidebarLayout(
            #            sidebarPanel(

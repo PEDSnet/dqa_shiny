@@ -117,16 +117,16 @@ config('retain_intermediates', NA)
 #' during processing of the request.
 #' If it is `NA`, the default value from site_info.R is used.
 #' @md
-config('results_schema', 'dqa_rox')
+config('results_schema', 'dqa_rox_dev')
 
 #' Current database version
-config('db_current', 'v53')
+config('db_current', 'v54')
 #' Previous database version
-config('db_previous', 'v52')
+config('db_previous', 'v53')
 
 #' Determine whether actual site names or masked identifiers
 #' should be shown on the app
-config('mask_site', FALSE)
+config('mask_site', TRUE)
 
 #################################################################
 #

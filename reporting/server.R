@@ -10,22 +10,25 @@ library(tidyr)
 library(RColorBrewer)
 library(forcats)
 
+res <- function(tbl_name) {
+  rslt <- results_tbl(tbl_name) %>% collect()
+  if (config('mask_site')) {
+    rslt <- mutate(rslt, site =
+             case_when(str_detect(site_anon, '[0-9]') ~
+                         paste0(str_extract(site_anon, '^[^0-9]+'),
+                                sprintf('%02d',
+                                        as.integer(str_extract(site_anon,
+                                                               '[0-9]+')))),
+                       TRUE ~ site_anon))
+  }
+  rslt
+}
 
 shinyServer(function(input, output) {
   # changes between data cycles -------
   # capture data
   dc_output_all <- reactive({
-    rslt<-results_tbl('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%collect() %>%
-      mutate(site=case_when(site=='total'~'total',
-                            TRUE ~ site)) %>%
-      mutate(site=case_when(config('mask_site')~as.factor(site_anon),
-                            TRUE~site))
-     # if(config('mask_site')){
-     #   rslt<-rslt%>%
-     #     mutate(site=as.factor(site))%>%
-     #     mutate(site=fct_reorder(site, sitenum, .na_rm=FALSE))
-     # }
-    return(rslt)
+    res('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%collect()
   })
 
   # adjust available site name
@@ -44,18 +47,8 @@ shinyServer(function(input, output) {
 
   # filter data for plotting
   dc_output <- reactive({
-    rslt<-results_tbl('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
-      # select(-c(check_name_app, application,threshold))%>%distinct()%>%# might be temporary fix
-      collect()%>%
-      filter(str_detect(domain,input$dc_domain)) %>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
-    # if(config('mask_site')){
-    #   rslt<-rslt%>%
-    #     mutate(site=as.factor(site))%>%
-    #     mutate(site=fct_reorder(site, sitenum, .na_rm=FALSE))
-    # }
-    return(rslt)
+    res('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
+      filter(str_detect(domain,input$dc_domain))
   })
 
   # update choices for subdomain
@@ -68,24 +61,12 @@ shinyServer(function(input, output) {
   # vocabulary and valueset conformance ------------
   # capture data
   vc_vs_output <- reactive({
-    rslt<-results_tbl('vc_vs_output_pp')%>%
-      collect() %>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))%>%
+    res('vc_vs_output_pp') %>%
       mutate(prop_viol=round(tot_prop,2))
-    # if(config('mask_site')){
-    #   rslt<-rslt%>%
-    #     mutate(site=as.factor(site))%>%
-    #     mutate(site=fct_reorder(site, sitenum))
-    # }
-    return(rslt)
   })
 
   vc_vs_violations <- reactive({
-    results_tbl('vc_vs_violations_pp') %>%
-      collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))%>%
+    res('vc_vs_violations_pp') %>%
       mutate(prop_viol=round(tot_prop,2))
     # results_tbl('vc_vs_violations') %>%
     #   collect()%>%
@@ -118,32 +99,14 @@ shinyServer(function(input, output) {
   # unmapped concepts -----
   # capture data
   uc_output <- reactive({
-    rslt<-results_tbl('uc_output_pp') %>%collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
-    # if(config('mask_site')){
-    #   rslt<-rslt%>%
-    #     mutate(site=as.factor(site))%>%
-    #     mutate(site=fct_reorder(site, sitenum))
-    # }
-    return(rslt)
+    res('uc_output_pp')
   })
   uc_yr_output <- reactive({
-    rslt<-results_tbl('uc_by_year_pp') %>%collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))%>%
+    res('uc_by_year_pp') %>%
       mutate(year_date=as.integer(year_date))
-    # if(config('mask_site')){
-    #   rslt<-rslt%>%
-    #     mutate(site=as.factor(site))%>%
-    #     mutate(site=fct_reorder(site, sitenum))
-    # }
-    return(rslt)
   })
   uc_top_output <- reactive({
-    results_tbl('uc_grpd_pp') %>% collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))%>%
+    results_tbl('uc_grpd_pp') %>%
       group_by(site, unmapped_description) %>%
       slice_max(order_by = src_value_ct, n=10) %>%
       ungroup()%>%
@@ -153,9 +116,7 @@ shinyServer(function(input, output) {
       mutate(proportion_of_unmapped=round(src_value_ct/unmapped_rows,2))
   })
   uc_top_output_overall <- reactive({
-    results_tbl('uc_grpd_pp')%>%collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))%>%
+    results_tbl('uc_grpd_pp') %>%
       group_by(unmapped_description)%>%
       slice_max(order_by=src_value_ct, n=10)%>%
       ungroup()%>%
@@ -174,15 +135,7 @@ shinyServer(function(input, output) {
   # person facts/records -------
   # capture data
   pf_output <- reactive({
-    rslt<-results_tbl('pf_output_pp') %>% collect() %>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
-    # if(config('mask_site')){
-    #   rslt<-rslt%>%
-    #     mutate(site=as.factor(site))%>%
-    #     mutate(site=fct_reorder(site, sitenum))
-    # }
-    return(rslt)
+    res('pf_output_pp')
   })
   # adjust available site name
   observeEvent(pf_output(), {
@@ -205,17 +158,11 @@ shinyServer(function(input, output) {
     unite("top5", -c(site, check_desc), sep=", ", na.rm=TRUE)
 
   bmc_pp <- reactive({
-    results_tbl('bmc_gen_output_pp')%>%
-      collect()%>%
-      left_join(top_rolled, by = c('site', 'check_desc'))%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
+    res('bmc_gen_output_pp')%>%
+      left_join(top_rolled, by = c('site', 'check_desc'))
   })
   bmc_pp_concepts <- reactive({
-    results_tbl('bmc_gen_output_concepts_pp')%>%
-      collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
+    results_tbl('bmc_gen_output_concepts_pp')
   })
 
   # adjust available site name
@@ -255,11 +202,7 @@ shinyServer(function(input, output) {
 
   # facts over time ------
   # capture data
-  fot_output_summary_ratio <- reactive({results_tbl('fot_output_mnth_ratio_pp') %>%
-      collect() %>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
-  })
+  fot_output_summary_ratio <- reactive({res('fot_output_mnth_ratio_pp')})
   # # update domain choices
   observeEvent(fot_output_summary_ratio(), {
     choices_new_fot<-unique(fot_output_summary_ratio()$domain)%>%sort()
@@ -285,19 +228,14 @@ shinyServer(function(input, output) {
   # })
 
   # limit table to domain selected for specific check choices
-  fot_output <- reactive({results_tbl('fot_heuristic_pp') %>%
-      inner_join(results_tbl('fot_heuristic_summary_pp'),
+  fot_output <- reactive({res('fot_heuristic_pp') %>%
+      inner_join(res('fot_heuristic_summary_pp'),
                  by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>% collect() %>%
-      filter(domain==input$fot_domain)%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
+      filter(domain==input$fot_domain)
   })
 
-  fot_output_summary <- reactive({results_tbl('fot_output_distance_pp') %>%
-      collect() %>%
-      filter(domain==input$fot_domain) %>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
+  fot_output_summary <- reactive({res('fot_output_distance_pp') %>%
+      filter(domain==input$fot_domain)
   })
 
   # adjust available site name
@@ -319,11 +257,8 @@ shinyServer(function(input, output) {
   # domain concordance -----
   # capture data
   dcon_output <- reactive({
-    results_tbl(name='dcon_output_pp')%>%collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site),
-             #           cohort=factor(cohort, levels=c("cohort_2_only", "combined", "cohort_1_only")))%>%
-             cohort=factor(cohort, levels=c("cohort_2_only", "combined", "cohort_1_only")))#%>%
+    res('dcon_output_pp') %>%
+      mutate(cohort=factor(cohort, levels=c("cohort_2_only", "combined", "cohort_1_only")))#%>%
     ## group_by(site, check_name)%>%
     # mutate(label_y=cumsum(yr_prop)-0.5*yr_prop)%>%
     # ungroup()
@@ -358,9 +293,7 @@ shinyServer(function(input, output) {
   # facts with missing visit ids -------------
   # connect with data
   mf_visitid_output <- reactive({
-    results_tbl(name='mf_visitid_pp')%>%collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
+    res('mf_visitid_pp')
   })
 
   # update choices for site name
@@ -377,10 +310,7 @@ shinyServer(function(input, output) {
 
   # expected concepts present ---------------------
   ecp_output <- reactive({
-    results_tbl('ecp_output_pp')%>%
-      collect() %>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
+    res('ecp_output_pp')
   })
   # update choices for site name
   observeEvent(ecp_output(), {
@@ -392,14 +322,11 @@ shinyServer(function(input, output) {
   # other configurations ----------------------
 
   # set site colors based on table where all sites expected
-  site_list<-(results_tbl("dc_output_pp") %>% select(site, site_anon)%>%distinct()%>%collect()%>%
-                mutate(site=case_when(config('mask_site')~site_anon,
-                                      TRUE~site)))$site
+  site_list<-(res("dc_output_pp"))$site %>% unique()
   #ramp_palette <- colorRampPalette(brewer.pal(8, "Dark2"))(length(site_list))
   ramp_palette<-pedsn_dq_pal(palette="main", reverse=FALSE)(length(site_list))
  # randomized_palette <- ramp_palette[sample(1:length(ramp_palette))]
   site_colors <- setNames(ramp_palette, site_list)
-
 
   dc_mappings <- results_tbl('dc_mappings')%>%collect()
 

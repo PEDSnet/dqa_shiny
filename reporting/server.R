@@ -535,7 +535,7 @@ shinyServer(function(input, output) {
       scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
       guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
       theme_bw()+
-      theme(axis.text.y= element_text(hjust=1,size=12),
+      theme(axis.text.y= element_text(hjust=1,size=9),
             axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
             axis.title=element_text(size=16))
     return(ggplotly(plt, tooltip="text"))

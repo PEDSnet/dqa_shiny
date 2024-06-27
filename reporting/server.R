@@ -287,7 +287,11 @@ shinyServer(function(input, output) {
   # limit table to domain selected for specific check choices
   fot_output <- reactive({results_tbl('fot_heuristic_pp') %>%
       inner_join(results_tbl('fot_heuristic_summary_pp'),
-                 by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>% collect() %>%
+                 by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>%
+      inner_join(select(results_tbl('fot_output_mnth_ratio_pp'),
+                        c(row_cts, check_name, domain, site, month_end)),
+                 by = c('check_name', 'domain', 'site', 'month_end'))%>%
+      collect() %>%
       filter(domain==input$fot_domain)%>%
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site))
@@ -322,8 +326,12 @@ shinyServer(function(input, output) {
     results_tbl(name='dcon_output_pp')%>%collect()%>%
       mutate(site=case_when(config('mask_site')~site_anon,
                             TRUE~site),
-             #           cohort=factor(cohort, levels=c("cohort_2_only", "combined", "cohort_1_only")))%>%
-             cohort=factor(cohort, levels=c("cohort_2_only", "combined", "cohort_1_only")))#%>%
+             cohort=factor(cohort, levels=c("cohort_2_only", "combined", "cohort_1_only",
+                                            "cohort_1_denom", "cohort_2_in_1",
+                                            "cohort_2_denom", "cohort_1_in_2"),
+                           labels=c("cohort 2 only", "combined", "cohort 1 only",
+                                    "cohort 1 not 2", "cohort 2 in 1",
+                                    "cohort 2 not 1", "cohort 1 in 2")))#%>%
     ## group_by(site, check_name)%>%
     # mutate(label_y=cumsum(yr_prop)-0.5*yr_prop)%>%
     # ungroup()
@@ -1004,7 +1012,7 @@ shinyServer(function(input, output) {
     return(ggplotly(showplot))
   })
   # site-specific plot
-  output$fot_plot <- renderPlot({
+  output$fot_plot <- renderPlotly({
     if(length(input$fot_subdomain_site)==0){
       showplot <- ggplot() +
         geom_blank() +
@@ -1019,40 +1027,64 @@ shinyServer(function(input, output) {
              y="")
     }else{
       if(input$fot_bounds=='No Bounds'){
+        ay <- list(
+          tickfont = list(color = "red"),
+          overlaying = "y",
+          side = "right",
+          title = "Normalized Row Count")
+
         showplot<-
-          ggplot(
-            filter(
-              fot_output(),
-              check_desc%in%c(input$fot_subdomain_site),
-              site %in% c(input$sitename_fot)
-            ))+
-          geom_line(aes(x=month_end,y=check,color=site)) +
-          theme_bw()+
-          theme(axis.text.x=element_text(size=12),
-                axis.text.y=element_text(size=12),
-                axis.title = element_text(size=16),
-                legend.position='none') +
-          scale_color_manual(values=site_colors,
-                             breaks=fot_output() %>% distinct(site) %>% pull()) +
-          scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
-          labs(x="Month/Year")+
-          facet_wrap(~check_desc)
+          fot_output()%>%
+          filter(check_desc%in%c(input$fot_subdomain_site),
+                 site %in% c(input$sitename_fot))%>%
+          group_by(check_desc)%>%
+          plot_ly()%>%
+          add_lines(x = ~month_end, y = ~row_cts, yaxis = 'y1', name = 'Row Count') %>%
+          add_lines(x = ~month_end, y = ~check, yaxis = 'y2', name = 'Normalized Row Count',
+                    line = list(color = 'navy', dash = 'dot')) %>%
+          layout(
+            yaxis2 = ay,
+            xaxis = list(title="Month End"),
+            yaxis = list(title="Row Count"))
       }
       else{
-        showplot<- ggplot(filter(fot_output(),check_desc%in%c(input$fot_subdomain_site), site==input$sitename_fot))+
-          geom_line(aes(x=month_end,y=check, group=site,color=site)) +
-          geom_line(aes(x=month_end, y=m+std_dev*as.numeric(input$fot_bounds))) +
-          geom_line(aes(x=month_end, y=m-std_dev*as.numeric(input$fot_bounds))) +
-          theme_bw()+
-          theme(axis.text.x=element_text(size=12),
-                axis.text.y=element_text(size=12),
-                axis.title = element_text(size=16),
-                legend.position='none') +
-          scale_color_manual(values=site_colors,
-                             breaks=fot_output() %>% distinct(site) %>% pull()) +
-          scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
-          labs(x="Month/Year")+
-          facet_wrap(~check_desc)
+        # showplot<- ggplot(filter(fot_output(),check_desc%in%c(input$fot_subdomain_site), site==input$sitename_fot))+
+        #   geom_line(aes(x=month_end,y=check, group=site,color=site)) +
+        #   geom_line(aes(x=month_end, y=m+std_dev*as.numeric(input$fot_bounds))) +
+        #   geom_line(aes(x=month_end, y=m-std_dev*as.numeric(input$fot_bounds))) +
+        #   theme_bw()+
+        #   theme(axis.text.x=element_text(size=12),
+        #         axis.text.y=element_text(size=12),
+        #         axis.title = element_text(size=16),
+        #         legend.position='none') +
+        #   scale_color_manual(values=site_colors,
+        #                      breaks=fot_output() %>% distinct(site) %>% pull()) +
+        #   scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
+        #   labs(x="Month/Year")+
+        #   facet_wrap(~check_desc)
+
+        ay <- list(
+          tickfont = list(color = "red"),
+          overlaying = "y",
+          side = "right",
+          title = "Normalized Row Count")
+
+        showplot<-
+          fot_output()%>%
+          filter(check_desc%in%c(input$fot_subdomain_site),
+                 site %in% c(input$sitename_fot))%>%
+          group_by(check_desc)%>%
+          plot_ly()%>%
+          add_lines(x = ~month_end, y = ~row_cts, yaxis = 'y1', name = 'Row Count') %>%
+          add_lines(x = ~month_end, y = ~check, yaxis = 'y2', name = 'Normalized Row Count',
+                    line = list(color = 'navy', dash = 'dot')) %>%
+          add_lines(x=~month_end,y=~m+std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Upper SD bound')%>%
+          add_lines(x=~month_end,y=~m-std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Lower SD bound')%>%
+          layout(
+            yaxis2 = ay,
+            xaxis = list(title="Month End"),
+            yaxis = list(title="Row Count"))
+
       }
 
       return(showplot)
@@ -1111,9 +1143,47 @@ shinyServer(function(input, output) {
              y="")
     }
     else if(input$sitename_dcon=='total'){
+      if(input$denom_dcon=='Overall'){
       showplot <- ggplot(filter(dcon_output(),
                                 site!='total',
-                                check_name%in%input$dcon_check)) +
+                                check_name%in%input$dcon_check,
+                                cohort%in%c("cohort 2 only", "combined", "cohort 1 only"))) +
+        geom_bar(aes(x=site,y=prop,fill=cohort,
+                     text=paste0("Cohort: ", cohort,
+                                 "\nProportion: ",round(prop,2))),
+                 stat='identity') +
+        scale_fill_pedsn_dq("triset")+
+        theme_bw()+
+        theme(axis.text.x=element_text(size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16))+
+        labs(x="Site",
+             y="Proportion")+
+        facet_wrap(~check_name)+
+        coord_flip()
+    }else if(input$denom_dcon=='Cohort 1'){
+      showplot <- ggplot(filter(dcon_output(),
+                                site!='total',
+                                check_name%in%input$dcon_check,
+                                cohort%in%c("cohort 1 not 2", "cohort 2 in 1"))) +
+        geom_bar(aes(x=site,y=prop,fill=cohort,
+                     text=paste0("Cohort: ", cohort,
+                                 "\nProportion: ",round(prop,2))),
+                 stat='identity') +
+        scale_fill_pedsn_dq("triset")+
+        theme_bw()+
+        theme(axis.text.x=element_text(size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16))+
+        labs(x="Site",
+             y="Proportion")+
+        facet_wrap(~check_name)+
+        coord_flip()
+    }else if(input$denom_dcon=='Cohort 2'){
+      showplot <- ggplot(filter(dcon_output(),
+                                site!='total',
+                                check_name%in%input$dcon_check,
+                                cohort%in%c("cohort 2 not 1", "cohort 1 in 2"))) +
         geom_bar(aes(x=site,y=prop,fill=cohort,
                      text=paste0("Cohort: ", cohort,
                                  "\nProportion: ",round(prop,2))),
@@ -1128,10 +1198,12 @@ shinyServer(function(input, output) {
         facet_wrap(~check_name)+
         coord_flip()
     }
-    else{
+    }else{
+      if(input$denom_dcon=="Overall"){
       showplot <- ggplot(filter(dcon_output(),
                                 site==input$sitename_dcon&
-                                  check_name%in%input$dcon_check)) +
+                                  check_name%in%input$dcon_check&
+                                  cohort%in%c("cohort 2 only", "combined", "cohort 1 only"))) +
         geom_bar(aes(x=site,y=prop,fill=cohort,
                      text=paste0("Cohort: ", cohort,
                                  "\nProportion: ",round(prop,2))),
@@ -1145,6 +1217,43 @@ shinyServer(function(input, output) {
              y="Proportion")+
         facet_wrap(~check_name)+
         coord_flip()
+      }else if(input$denom_dcon=="Cohort 1"){
+        showplot <- ggplot(filter(dcon_output(),
+                                  site==input$sitename_dcon&
+                                    check_name%in%input$dcon_check&
+                                    cohort%in%c("cohort 1 not 2", "cohort 2 in 1"))) +
+          geom_bar(aes(x=site,y=prop,fill=cohort,
+                       text=paste0("Cohort: ", cohort,
+                                   "\nProportion: ",round(prop,2))),
+                   stat='identity') +
+          scale_fill_pedsn_dq("triset")+
+          theme_bw()+
+          theme(axis.text.x=element_text(size=12),
+                axis.text.y=element_text(size=12),
+                axis.title=element_text(size=16))+
+          labs(x="Site",
+               y="Proportion")+
+          facet_wrap(~check_name)+
+          coord_flip()
+      }else if(input$denom_dcon=="Cohort 2"){
+        showplot <- ggplot(filter(dcon_output(),
+                                  site==input$sitename_dcon&
+                                    check_name%in%input$dcon_check&
+                                    cohort%in%c("cohort 2 not 1", "cohort 1 in 2"))) +
+          geom_bar(aes(x=site,y=prop,fill=cohort,
+                       text=paste0("Cohort: ", cohort,
+                                   "\nProportion: ",round(prop,2))),
+                   stat='identity') +
+          scale_fill_pedsn_dq("triset")+
+          theme_bw()+
+          theme(axis.text.x=element_text(size=12),
+                axis.text.y=element_text(size=12),
+                axis.title=element_text(size=16))+
+          labs(x="Site",
+               y="Proportion")+
+          facet_wrap(~check_name)+
+          coord_flip()
+      }
     }
     return(ggplotly(showplot, tooltip="text"))
   })

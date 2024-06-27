@@ -222,7 +222,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                      box(title="Summary Plots",width=12,
                                          plotlyOutput("fot_summary_plot")),
                                      box(title="Site Specific Facts Over Time",width=12,
-                                         plotOutput("fot_plot"))
+                                         plotlyOutput("fot_plot"))
                                    )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout
@@ -233,6 +233,11 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    selectInput(inputId = "sitename_dcon",
                                                label = "Select Site",
                                                choices = NULL),
+                                   selectInput(inputId = "denom_dcon",
+                                               label = "Select Denominator",
+                                               choices = c("Overall",
+                                                           "Cohort 1",
+                                                           "Cohort 2")),
                                    checkboxGroupInput(inputId="dcon_check",
                                                       label="Specific Check",
                                                       choices=NULL)),

@@ -126,7 +126,7 @@ config('db_previous', 'v53')
 
 #' Determine whether actual site names or masked identifiers
 #' should be shown on the app
-config('mask_site', TRUE)
+config('mask_site', FALSE)
 
 #################################################################
 #

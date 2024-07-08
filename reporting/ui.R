@@ -200,29 +200,34 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    selectInput(inputId = "fot_domain",
                                                label="Choose Domain for Summary and Site-Specific Plots",
                                                choices = NULL),
+                                   wellPanel(
+                                     strong(helpText("Summary Plot")),
                                    selectInput(inputId='fot_subdomain_overall',
                                                label='Summary Plots: Specific Check',
-                                               choices=NULL),
-                                   checkboxGroupInput(inputId="fot_subdomain_site",
-                                                      label="Site Specific Plots: Specific Check",
-                                                      choices=NULL),
+                                               choices=NULL)),
+                                   wellPanel(
+                                     strong(helpText("Site Specific")),
                                    selectInput(inputId = "sitename_fot",
                                                label = "Select Site",
                                                choices =NULL),
+                                   checkboxGroupInput(inputId="fot_subdomain_site",
+                                                      label="Site Specific Plots: Specific Check",
+                                                      choices=NULL),
                                    selectInput(inputId="fot_bounds",
                                                label="SD Bounds Option",
                                                choices=c('No Bounds',
                                                          1,
                                                          2,
-                                                         3))),
+                                                         3)))),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
                                      #summary
-                                     box(title="Summary Plots",width=12,
+                                     box(title="Summary Plot",width=12,
                                          plotlyOutput("fot_summary_plot")),
                                      box(title="Site Specific Facts Over Time",width=12,
-                                         plotlyOutput("fot_plot"))
+                                         #plotlyOutput("fot_plot"))
+                                         uiOutput("fot_plot"))
                                    )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout
@@ -249,7 +254,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                          DT::dataTableOutput("dcon_cohort_descr")),
                                      #plots
                                      box(title="Domain Concordance Overall",width=12,
-                                         plotlyOutput("dcon_overall_plot")),
+                                         plotlyOutput("dcon_overall_plot"))
                                      )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout
@@ -285,7 +290,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    fluidRow(
                                      box(title="Overall Expected Concepts Present",
                                          width=12,
-                                         plotOutput("ecp_plot")),
+                                         plotlyOutput("ecp_plot")),
                                      box(title="Site-Specific Expected Concepts Present",
                                          width=12,
                                          plotOutput("ecp_plot_site"))

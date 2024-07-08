@@ -24,6 +24,36 @@ res <- function(tbl_name) {
   rslt
 }
 
+plot_fot_fn <- function(data) {
+  ay <- list(
+    tickfont = list(color = "red"),
+    overlaying = "y",
+    side = "right",
+    title = "Normalized Row Count")
+
+  data%>%
+    plotly::plot_ly(
+      x = ~month_end,
+      y = ~row_cts,
+      yaxis="y1",
+      name = "Row Counts",
+      type="scatter",
+      mode="lines") %>%
+    plotly::add_trace(
+      x=~month_end,
+      y = ~check,
+      type="scatter",
+      mode="lines",
+      yaxis="y2",
+      name = "Normalized",
+      line=list(color='navy', dash='dot'))%>%
+    layout(
+      yaxis2 = ay,
+      xaxis = list(title="Month End"),
+      yaxis = list(title="Row Count"))
+
+}
+
 shinyServer(function(input, output) {
   # changes between data cycles -------
   # capture data
@@ -183,18 +213,18 @@ shinyServer(function(input, output) {
   # pull in the listing of concepts that are considered best/notbest
   bmc_conceptset <- results_tbl('bmc_conceptset')%>%filter(!is.na(include))%>%collect()
   # set up the BMC tables that will be displayed
-  output$bmc_conceptset_best<-DT::renderDataTable({
+  output$bmc_conceptset_best<-DT::renderDT({
     bmc_conceptset%>%
       filter(include==1)%>%
       select(check_desc, concept)
   })
-  output$bmc_conceptset_notbest<-DT::renderDataTable({
+  output$bmc_conceptset_notbest<-DT::renderDT({
     bmc_conceptset%>%
       filter(include==0)%>%
       select(check_desc, concept)
   })
 
-  output$bmc_pp_top_nonbest <- DT::renderDataTable({
+  output$bmc_pp_top_nonbest <- DT::renderDT({
     bmc_pp_top()%>%
       mutate(row_proportions=round(row_proportions,2))
   })
@@ -238,6 +268,18 @@ shinyServer(function(input, output) {
       collect() %>%
       filter(domain==input$fot_domain)
   })
+  fot_output_site <- reactive({res('fot_heuristic_pp') %>%
+      inner_join(res('fot_heuristic_summary_pp'),
+                 by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>%
+      inner_join(select(res('fot_output_mnth_ratio_pp'),
+                        c(row_cts, check_name, domain, site, month_end)),
+                 by = c('check_name', 'domain', 'site', 'month_end'))%>%
+      collect() %>%
+      filter(domain==input$fot_domain,
+             site==input$sitename_fot,
+             check_desc%in%input$fot_subdomain_site)
+  })
+
 
   fot_output_summary <- reactive({res('fot_output_distance_pp') %>%
       filter(domain==input$fot_domain)
@@ -289,7 +331,7 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId = "sitename_dcon", choices=choices_new)
   })
   # descriptions of cohorts
-  output$dcon_cohort_descr <- renderDataTable(
+  output$dcon_cohort_descr <- renderDT(
     DT::datatable(
       dcon_meta(),
       options=list(pageLength=5),
@@ -350,7 +392,7 @@ shinyServer(function(input, output) {
 
   # DESCRIPTIONS
   #http://cran.nexr.com/web/packages/DT/DT.pdf
-  output$dt_descriptions <- DT::renderDataTable(
+  output$dt_descriptions <- DT::renderDT(
     DT::datatable(
       df_check_descriptions,
       options=list(pageLength=5),
@@ -360,7 +402,7 @@ shinyServer(function(input, output) {
 
   # PLOTS
   # CHANGES BETWEEN DATA CYCLES ---------------------------------------------------------------------------------------------------------
-  output$dc_mappings <- DT::renderDataTable(
+  output$dc_mappings <- DT::renderDT(
     DT::datatable(
       dc_mappings,
       options=list(pageLength=5),
@@ -588,7 +630,7 @@ shinyServer(function(input, output) {
     }
     return(outplot)
   })
-  output$vs_table <- DT::renderDataTable({
+  output$vs_table <- DT::renderDT({
     if(input$sitename_vs_conf=='total'){
       outtable <-filter(vc_vs_output(), check_type=='vs')%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
@@ -687,7 +729,7 @@ shinyServer(function(input, output) {
     }
     return(ggplotly(outplot, tooltip="text"))
   })
-  output$vc_table <- DT::renderDataTable({
+  output$vc_table <- DT::renderDT({
     if(input$sitename_vc_conf=='total'){
       outtable <-filter(vc_vs_output(), check_type=='vc'&!accepted_value)%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
@@ -714,7 +756,7 @@ shinyServer(function(input, output) {
   })
 
   # vocabulary conformance table of vocabs
-  output$vc_vocabs<-DT::renderDataTable({
+  output$vc_vocabs<-DT::renderDT({
     vc_vocabs_accept
   })
 
@@ -780,7 +822,7 @@ shinyServer(function(input, output) {
     return(outplot)
   })
 
-  output$uc_top_tbl <- DT::renderDataTable({
+  output$uc_top_tbl <- DT::renderDT({
     if(input$sitename_uc=="total"){
       outtable <- uc_top_output_overall()%>%
         select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
@@ -796,7 +838,7 @@ shinyServer(function(input, output) {
   # person records/facts plots
   ### barplot
 
-  output$pf_mappings <- DT::renderDataTable(
+  output$pf_mappings <- DT::renderDT(
     DT::datatable(
       pf_mappings,
       options=list(pageLength=5),
@@ -839,22 +881,33 @@ shinyServer(function(input, output) {
   ### heatmap
   output$pf_overall_heat_plot <- renderPlotly({
     if(input$sitename_pf=="total"){
-      outplot <- ggplot(pf_output(), aes(x=site, y=check_description, fill=fact_pts_prop))+
+      outplot <- ggplot(pf_output()%>%
+                          mutate(text=paste0("site: ",site,
+                                             "\ncheck_description: ",check_description,
+                                             "\nprop. visits: ",fact_visits_prop,
+                                             "\nprop. patients: ",fact_pts_prop)), aes(x=site, y=check_description, fill=fact_pts_prop, text=text))+
         geom_tile() +
+        theme_bw()+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
         labs(x="",y="",
              fill="Proportion Patients\nwith Fact")+
-        facet_wrap(~visit_type, scales = "free_x")
+        facet_wrap(~visit_type, scales = "free_x")+
+        scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
     }
     else{
-      outplot <- ggplot(filter(pf_output(),site==input$sitename_pf), aes(x=site, y=check_description, fill=fact_pts_prop))+
+      outplot <- ggplot(filter(pf_output(),site==input$sitename_pf)%>%
+                          mutate(text=paste0("site: ",site,
+                                             "\ncheck_description: ",check_description,
+                                             "\nprop. visits: ",fact_visits_prop,
+                                             "\nprop. patients: ",fact_pts_prop)), aes(x=site, y=check_description, fill=fact_pts_prop, text=text))+
         geom_tile() +
+        theme_bw()+
         labs(y="",
              fill="Proportion Patients\nwith Fact")+
-        facet_wrap(~visit_type, scales = "free_x")
+        facet_wrap(~visit_type, scales = "free_x")+
+        scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
     }
-    #return(ggplotly(outplot, tooltip=c("site", "fact_pts_prop")))
-    return(ggplotly(outplot))
+    return(ggplotly(outplot, tooltip="text"))
   })
 
   # best mapped concepts
@@ -895,7 +948,7 @@ shinyServer(function(input, output) {
   # facts over time plots
   # overall plot
   output$fot_summary_plot <- renderPlotly({
-    allsite_avg<-fot_output_summary_ratio()%>%filter(site=='allsite_median')#%>%
+    allsite_avg<-fot_output_summary_ratio()%>%filter(check_desc==input$fot_subdomain_overall&site=='allsite_median')#%>%
       # mutate(mt=as.character(month_end))%>%
       # mutate(text=paste0("Site: ",site,
       #                    "\nMonth: ",mt))
@@ -914,32 +967,19 @@ shinyServer(function(input, output) {
       geom_smooth(data=allsite_avg, aes(x=month_end,
                                       y=row_ratio,
                                       color=site,
-                                      group=site), linewidth=1.5)+
-     # geom_point(aes(text=text),size=0.00000001)+
+                                      group=site),linewidth=1.5)+
       scale_color_manual(values=site_colors) +
       theme_bw()+
       labs(x="Time (month)",
            y="Fact Rate (records per 10,000 visits)",
-           title="Fact Rate over Time")
-    # showplot <- ggplot(
-    #   fot_output_summary() %>% filter(
-    #     check_desc==input$fot_subdomain_overall
-    #   )
-    # ) + geom_line(aes(x=month_end,y=distance,group=site,color=site), linewidth=1) +
-    #   scale_color_manual(values=site_colors,
-    #                      breaks=fot_output_summary() %>% distinct(site) %>% pull())+
-    #   scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
-    #   theme_bw()+
-    #   theme(axis.text.x=element_text(size=12),
-    #         axis.text.y=element_text(size=12),
-    #         axis.title = element_text(size=16)) +
-    #   labs(x="Month/Year")
+           title="Fact Rate over Time")+
+         scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))
     return(ggplotly(showplot))
   })
   # site-specific plot
-  output$fot_plot <- renderPlotly({
+  output$fot_plot <- renderUI({
     if(length(input$fot_subdomain_site)==0){
-      showplot <- ggplot() +
+      sp<-ggplot() +
         geom_blank() +
         annotate("text",label='Select a domain and specific check', x=0,y=0)+
         theme(axis.text.x=element_blank(),
@@ -950,27 +990,43 @@ shinyServer(function(input, output) {
               panel.grid.minor = element_blank())+
         labs(x="",
              y="")
+      renderPlot(sp)
     }else{
       if(input$fot_bounds=='No Bounds'){
-        ay <- list(
-          tickfont = list(color = "red"),
-          overlaying = "y",
-          side = "right",
-          title = "Normalized Row Count")
+        df_plots <- fot_output_site()%>%
+          dplyr::nest_by(check_desc) %>%
+          dplyr::mutate(plot = list(plot_fot_fn(data)))
+        #df_plots$plot
+        #n_check_desc<-length(input$fot_subdomain_site)
 
-        showplot<-
-          fot_output()%>%
-          filter(check_desc%in%c(input$fot_subdomain_site),
-                 site %in% c(input$sitename_fot))%>%
-          group_by(check_desc)%>%
-          plot_ly()%>%
-          add_lines(x = ~month_end, y = ~row_cts, yaxis = 'y1', name = 'Row Count') %>%
-          add_lines(x = ~month_end, y = ~check, yaxis = 'y2', name = 'Normalized Row Count',
-                    line = list(color = 'navy', dash = 'dot')) %>%
-          layout(
-            yaxis2 = ay,
-            xaxis = list(title="Month End"),
-            yaxis = list(title="Row Count"))
+        fot_plot_output_list <- lapply(1:length(input$fot_subdomain_site), function(i) {
+          plotname <- paste("plot", i, sep="")
+          plotlyOutput(plotname)
+        })
+
+        # Convert the list to a tagList - this is necessary for the list of items
+        # to display properly.
+        do.call(tagList, fot_plot_output_list)
+        #fot_output_plot_list
+
+        # ay <- list(
+        #   tickfont = list(color = "red"),
+        #   overlaying = "y",
+        #   side = "right",
+        #   title = "Normalized Row Count")
+        #
+        # showplot1<-
+        #   fot_output()%>%
+        #   filter(check_desc%in%c(input$fot_subdomain_site),
+        #          site %in% c(input$sitename_fot))%>%
+        #   do(p=plot_ly(., x = ~month_end, y = ~row_cts, color = ~check_desc, type = "scatter", mode="lines"))
+        # showplot2<-
+        #   fot_output()%>%
+        #   filter(check_desc%in%c(input$fot_subdomain_site),
+        #          site %in% c(input$sitename_fot))%>%
+        #   do(p=plot_ly(., x = ~month_end, y = ~check, color = ~check_desc, type = "scatter", mode="lines"))
+        #
+        # showplot<-subplot(showplot1, showplot2)
       }
       else{
         # showplot<- ggplot(filter(fot_output(),check_desc%in%c(input$fot_subdomain_site), site==input$sitename_fot))+
@@ -1011,11 +1067,21 @@ shinyServer(function(input, output) {
             yaxis = list(title="Row Count"))
 
       }
-
-      return(showplot)
     }
   })
+# https://gist.github.com/wch/5436415/
+  observe({
+  for(i in 1:length(input$fot_subdomain_site)){
+    local({
+      my_i <- i
+      plotname <- paste("plot", my_i, sep="")
 
+      output[[plotname]] <- renderPlotly({
+        df_plots$plot[[my_i]]
+      })
+    })
+  }
+  })
   # domain concordance
   observeEvent(dcon_output(), {
     choices_new<-unique(dcon_output()$check_name)
@@ -1196,7 +1262,9 @@ shinyServer(function(input, output) {
       theme(axis.text.y= element_text(hjust=1, size=12),
             axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
             axis.title=element_text(size=16))+
-      facet_wrap(~domain, scales="free_y")
+      facet_wrap(~domain, scales="free_y")+
+      scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
+
 
   })
 
@@ -1233,8 +1301,11 @@ shinyServer(function(input, output) {
     return(showplot)
   })
 
-  output$ecp_plot <- renderPlot({
-    ggplot(ecp_output(), aes(x=site, y=round(prop_with_concept, 2), fill=site))+
+  output$ecp_plot <- renderPlotly({
+    plt<-ggplot(ecp_output()%>%
+                  mutate(text=paste0("site: ",site,
+                                     "\nproportion: ",round(prop_with_concept,2))),
+                aes(x=site, y=prop_with_concept, fill=site, text=text))+
       geom_bar(stat="identity")+
       scale_fill_manual(values=site_colors)+
       theme_bw()+
@@ -1243,6 +1314,7 @@ shinyServer(function(input, output) {
       theme(legend.position = "none")+
       facet_wrap(~concept_group)+
       coord_flip()
+    ggplotly(plt, tooltip="text")
   })
   output$ecp_plot_site <- renderPlot({
     ggplot(filter(ecp_output(), site==input$sitename_ecp),

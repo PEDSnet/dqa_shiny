@@ -24,12 +24,14 @@ res <- function(tbl_name) {
   rslt
 }
 
+# Function for plotting site-specific FOT plots
 plot_fot_fn <- function(data) {
   ay <- list(
     tickfont = list(color = "red"),
     overlaying = "y",
     side = "right",
     title = "Normalized Row Count")
+
 
   data%>%
     plotly::plot_ly(
@@ -983,7 +985,12 @@ shinyServer(function(input, output) {
   # site-specific plots
   # Insert the right number of plot output objects into the web page
   output$fot_plot <- renderUI({
-    plot_output_list <- lapply(1:length(input$fot_subdomain_site), function(i) {
+    if(length(input$fot_subdomain_site)==0){
+      maxi<-1L
+    }else{
+      maxi<-length(input$fot_subdomain_site)
+    }
+    plot_output_list <- lapply(1:maxi, function(i) {
       plotname <- paste("plot", i, sep="")
       plotlyOutput(plotname)
     })
@@ -995,25 +1002,65 @@ shinyServer(function(input, output) {
   # Call renderPlot for each one. Plots are only actually generated when they
   # are visible on the web page.
 
-  observeEvent(fot_output_site(),{
-    df_plots <- fot_output_site()%>%
-      dplyr::nest_by(check_desc) %>%
-      dplyr::mutate(plot = list(plot_fot_fn(data)))
+  fot_listen<-reactive({list(fot_output_site(), input$fot_bounds)})
 
-    for (i in 1:length(input$fot_subdomain_site)) {
-      # Need local so that each item gets its own number. Without it, the value
-      # of i in the renderPlot() will be the same across all instances, because
-      # of when the expression is evaluated.
-      local({
-        my_i <- i
-        plotname <- paste("plot", my_i, sep="")
+  observeEvent(fot_listen(),{
+    if(length(input$fot_subdomain_site)==0){
+      plotname <- "plot 1"
+      showplot <- ggplot() +
+        geom_blank() +
+        annotate("text",label='Select a specific check', x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+      output[[plotname]] <- renderPlotly({showplot})
+    }else{
+      df_plots <- fot_output_site()%>%
+        dplyr::nest_by(check_desc) %>%
+        dplyr::mutate(plot = list(plot_fot_fn(data)))
 
-        output[[plotname]] <- renderPlotly({
-          df_plots$plot[[my_i]]
+      if(input$fot_bounds=='No Bounds'){
+        for (i in 1:length(input$fot_subdomain_site)) {
+          # Need local so that each item gets its own number. Without it, the value
+          # of i in the renderPlot() will be the same across all instances, because
+          # of when the expression is evaluated.
+          local({
+            my_i <- i
+            plotname <- paste("plot", my_i, sep="")
+
+            plot_title<-as.character(input$fot_subdomain_site[i])
+            output[[plotname]] <- renderPlotly({
+              df_plots$plot[[my_i]]%>%
+                layout(title=plot_title)
+            })
           })
-        })
+        }
+      }else{
+        for (i in 1:length(input$fot_subdomain_site)) {
+          # Need local so that each item gets its own number. Without it, the value
+          # of i in the renderPlot() will be the same across all instances, because
+          # of when the expression is evaluated.
+          local({
+            my_i <- i
+            plotname <- paste("plot", my_i, sep="")
+
+            plot_title<-as.character(input$fot_subdomain_site[i])
+            output[[plotname]] <- renderPlotly({
+              df_plots$plot[[my_i]]%>%
+                layout(title=plot_title) %>%
+                add_lines(x=~month_end,y=~m+std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Upper SD bound')%>%
+                add_lines(x=~month_end,y=~m-std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Lower SD bound')
+            })
+          })
+        }
       }
-    })
+    }
+  })
 
 
   # domain concordance over all time

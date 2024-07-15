@@ -281,6 +281,7 @@ shinyServer(function(input, output) {
   })
 
 
+
   fot_output_summary <- reactive({res('fot_output_distance_pp') %>%
       filter(domain==input$fot_domain)
   })
@@ -312,6 +313,12 @@ shinyServer(function(input, output) {
                                     "cohort 1 not 2", "cohort 2 in 1",
                                     "cohort 2 not 1", "cohort 1 in 2")))#%>%
   })
+
+  observeEvent(dcon_output(), {
+    choices_new<-unique(dcon_output()$check_name)
+    updateCheckboxGroupInput(inputId="dcon_check", choices=choices_new)
+  })
+
   # dcon_output_byyr <- reactive({
   #   results_tbl(name='dcon_output_pp_byyr')%>%collect()%>%
   #     mutate(site=case_when(config('mask_site')~site_anon,
@@ -948,10 +955,7 @@ shinyServer(function(input, output) {
   # facts over time plots
   # overall plot
   output$fot_summary_plot <- renderPlotly({
-    allsite_avg<-fot_output_summary_ratio()%>%filter(check_desc==input$fot_subdomain_overall&site=='allsite_median')#%>%
-      # mutate(mt=as.character(month_end))%>%
-      # mutate(text=paste0("Site: ",site,
-      #                    "\nMonth: ",mt))
+    allsite_avg<-fot_output_summary_ratio()%>%filter(check_desc==input$fot_subdomain_overall&site=='allsite_median')
     showplot <- ggplot(
       fot_output_summary_ratio() %>%
         filter(check_desc==input$fot_subdomain_overall&site!='allsite_median'),#%>%
@@ -976,147 +980,41 @@ shinyServer(function(input, output) {
          scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))
     return(ggplotly(showplot))
   })
-  # site-specific plot
+  # site-specific plots
+  # Insert the right number of plot output objects into the web page
   output$fot_plot <- renderUI({
-    if(length(input$fot_subdomain_site)==0){
-      sp<-ggplot() +
-        geom_blank() +
-        annotate("text",label='Select a domain and specific check', x=0,y=0)+
-        theme(axis.text.x=element_blank(),
-              axis.ticks.x=element_blank(),
-              axis.text.y=element_blank(),
-              axis.ticks.y=element_blank(),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank())+
-        labs(x="",
-             y="")
-      renderPlot(sp)
-    }else{
-      if(input$fot_bounds=='No Bounds'){
-        df_plots <- fot_output_site()%>%
-          dplyr::nest_by(check_desc) %>%
-          dplyr::mutate(plot = list(plot_fot_fn(data)))
-        #df_plots$plot
-        #n_check_desc<-length(input$fot_subdomain_site)
-
-        fot_plot_output_list <- lapply(1:length(input$fot_subdomain_site), function(i) {
-          plotname <- paste("plot", i, sep="")
-          plotlyOutput(plotname)
-        })
-
-        # Convert the list to a tagList - this is necessary for the list of items
-        # to display properly.
-        do.call(tagList, fot_plot_output_list)
-        #fot_output_plot_list
-
-        # ay <- list(
-        #   tickfont = list(color = "red"),
-        #   overlaying = "y",
-        #   side = "right",
-        #   title = "Normalized Row Count")
-        #
-        # showplot1<-
-        #   fot_output()%>%
-        #   filter(check_desc%in%c(input$fot_subdomain_site),
-        #          site %in% c(input$sitename_fot))%>%
-        #   do(p=plot_ly(., x = ~month_end, y = ~row_cts, color = ~check_desc, type = "scatter", mode="lines"))
-        # showplot2<-
-        #   fot_output()%>%
-        #   filter(check_desc%in%c(input$fot_subdomain_site),
-        #          site %in% c(input$sitename_fot))%>%
-        #   do(p=plot_ly(., x = ~month_end, y = ~check, color = ~check_desc, type = "scatter", mode="lines"))
-        #
-        # showplot<-subplot(showplot1, showplot2)
-      }
-      else{
-        # showplot<- ggplot(filter(fot_output(),check_desc%in%c(input$fot_subdomain_site), site==input$sitename_fot))+
-        #   geom_line(aes(x=month_end,y=check, group=site,color=site)) +
-        #   geom_line(aes(x=month_end, y=m+std_dev*as.numeric(input$fot_bounds))) +
-        #   geom_line(aes(x=month_end, y=m-std_dev*as.numeric(input$fot_bounds))) +
-        #   theme_bw()+
-        #   theme(axis.text.x=element_text(size=12),
-        #         axis.text.y=element_text(size=12),
-        #         axis.title = element_text(size=16),
-        #         legend.position='none') +
-        #   scale_color_manual(values=site_colors,
-        #                      breaks=fot_output() %>% distinct(site) %>% pull()) +
-        #   scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
-        #   labs(x="Month/Year")+
-        #   facet_wrap(~check_desc)
-
-        ay <- list(
-          tickfont = list(color = "red"),
-          overlaying = "y",
-          side = "right",
-          title = "Normalized Row Count")
-
-        showplot<-
-          fot_output()%>%
-          filter(check_desc%in%c(input$fot_subdomain_site),
-                 site %in% c(input$sitename_fot))%>%
-          group_by(check_desc)%>%
-          plot_ly()%>%
-          add_lines(x = ~month_end, y = ~row_cts, yaxis = 'y1', name = 'Row Count') %>%
-          add_lines(x = ~month_end, y = ~check, yaxis = 'y2', name = 'Normalized Row Count',
-                    line = list(color = 'navy', dash = 'dot')) %>%
-          add_lines(x=~month_end,y=~m+std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Upper SD bound')%>%
-          add_lines(x=~month_end,y=~m-std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Lower SD bound')%>%
-          layout(
-            yaxis2 = ay,
-            xaxis = list(title="Month End"),
-            yaxis = list(title="Row Count"))
-
-      }
-    }
-  })
-# https://gist.github.com/wch/5436415/
-  observe({
-  for(i in 1:length(input$fot_subdomain_site)){
-    local({
-      my_i <- i
-      plotname <- paste("plot", my_i, sep="")
-
-      output[[plotname]] <- renderPlotly({
-        df_plots$plot[[my_i]]
-      })
+    plot_output_list <- lapply(1:length(input$fot_subdomain_site), function(i) {
+      plotname <- paste("plot", i, sep="")
+      plotlyOutput(plotname)
     })
-  }
+
+    # Convert the list to a tagList - this is necessary for the list of items
+    # to display properly.
+    do.call(tagList, plot_output_list)
   })
-  # domain concordance
-  observeEvent(dcon_output(), {
-    choices_new<-unique(dcon_output()$check_name)
-    updateCheckboxGroupInput(inputId="dcon_check", choices=choices_new)
-  })
-  # plot of domain concordance over time
-  # output$dcon_time_plot <- renderPlot({
-  #   if(length(input$dcon_check)==0){
-  #     showplot <- ggplot() +
-  #       geom_blank() +
-  #       annotate("text",label='Select a specific check', x=0,y=0)+
-  #       theme(axis.text.x=element_blank(),
-  #             axis.ticks.x=element_blank(),
-  #             axis.text.y=element_blank(),
-  #             axis.ticks.y=element_blank(),
-  #             panel.grid.major = element_blank(),
-  #             panel.grid.minor = element_blank())+
-  #       labs(x="",
-  #            y="")
-  #   }else{
-  #     showplot <- ggplot(filter(dcon_output_byyr(),
-  #                                 site==input$sitename_dcon&
-  #                                 yr>=input$date_dcon_range[1],yr<=input$date_dcon_range[2]&
-  #                                 check_name%in%input$dcon_check)) +
-  #       geom_line(aes(x=yr,y=value_pts,group=cohort,color=cohort, linetype="patients"), linewidth=1) +
-  #       geom_line(aes(x=yr,y=value_visits,group=cohort,color=cohort, linetype="visits"), linewidth=1) +
-  #       scale_linetype_manual("concordance\ntype", values=c("patients"="solid", "visits"="dotted"))+
-  #       theme_bw()+
-  #       scale_x_continuous(breaks=pretty_breaks())+
-  #       labs(x="Year",
-  #            y="Count")+
-  #       facet_wrap(~check_name)
-  #   }
-  #   return(showplot)
-  # })
+  # Call renderPlot for each one. Plots are only actually generated when they
+  # are visible on the web page.
+
+  observeEvent(fot_output_site(),{
+    df_plots <- fot_output_site()%>%
+      dplyr::nest_by(check_desc) %>%
+      dplyr::mutate(plot = list(plot_fot_fn(data)))
+
+    for (i in 1:length(input$fot_subdomain_site)) {
+      # Need local so that each item gets its own number. Without it, the value
+      # of i in the renderPlot() will be the same across all instances, because
+      # of when the expression is evaluated.
+      local({
+        my_i <- i
+        plotname <- paste("plot", my_i, sep="")
+
+        output[[plotname]] <- renderPlotly({
+          df_plots$plot[[my_i]]
+          })
+        })
+      }
+    })
+
 
   # domain concordance over all time
   output$dcon_overall_plot <- renderPlotly({

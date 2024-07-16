@@ -284,9 +284,9 @@ shinyServer(function(input, output) {
 
 
 
-  fot_output_summary <- reactive({res('fot_output_distance_pp') %>%
-      filter(domain==input$fot_domain)
-  })
+  # fot_output_summary <- reactive({res('fot_output_distance_pp') %>%
+  #     filter(domain==input$fot_domain)
+  # })
 
   # adjust available site name
   observeEvent(fot_output(), {
@@ -409,8 +409,8 @@ shinyServer(function(input, output) {
     )
   )
 
-  # PLOTS
-  # CHANGES BETWEEN DATA CYCLES ---------------------------------------------------------------------------------------------------------
+  # PLOTS ------
+  # CHANGES BETWEEN DATA CYCLES ------------------------------
   output$dc_mappings <- DT::renderDT(
     DT::datatable(
       dc_mappings,
@@ -598,7 +598,7 @@ shinyServer(function(input, output) {
     return(ggplotly(plt, tooltip="text"))
   })
 
-  # value set conformance
+  # VALUE SET CONFORMANCE ------
   output$vs_plot <- renderPlot({
     if(input$sitename_vs_conf=='total'){
       outplot<-ggplot(filter(vc_vs_output(),check_type=='vs'),
@@ -665,7 +665,7 @@ shinyServer(function(input, output) {
     }
     return(outtable)
   })
-  # vocabulary conformance
+  # VOCABULARY CONFORMANCE -----
   output$vc_overall_plot <- renderPlotly({
     if(input$sitename_vc_conf=='total'){
     plt<-ggplot(filter(vc_vs_output(), check_type=='vc')%>%
@@ -769,7 +769,7 @@ shinyServer(function(input, output) {
     vc_vocabs_accept
   })
 
-  # unmapped concepts
+  # UNMAPPED CONCEPTS --------
   output$uc_overall_plot <- renderPlot({
     if(input$sitename_uc=="total"){
       outplot <- ggplot(uc_output(), aes(x = site, y = unmapped_prop, fill=site)) +
@@ -844,7 +844,7 @@ shinyServer(function(input, output) {
   }
   )
 
-  # person records/facts plots
+  # PERSON FACTS/RECORDS ------
   ### barplot
 
   output$pf_mappings <- DT::renderDT(
@@ -919,7 +919,7 @@ shinyServer(function(input, output) {
     return(ggplotly(outplot, tooltip="text"))
   })
 
-  # best mapped concepts
+  # BEST MAPPED CONCEPTS --------
   output$bmc_overall_plot <- renderPlotly({
     if(input$sitename_bmc=="total"){
       outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'),
@@ -954,8 +954,8 @@ shinyServer(function(input, output) {
 
   #------------
 
-  # facts over time plots
-  # overall plot
+  # FACTS OVER TIME -----
+  ### overall plot
   output$fot_summary_plot <- renderPlotly({
     allsite_avg<-fot_output_summary_ratio()%>%filter(check_desc==input$fot_subdomain_overall&site=='allsite_median')
     showplot <- ggplot(
@@ -982,8 +982,9 @@ shinyServer(function(input, output) {
          scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))
     return(ggplotly(showplot))
   })
-  # site-specific plots
+  ### site-specific plots
   # Insert the right number of plot output objects into the web page
+  # right now, not working when no checkboxes are selected...
   output$fot_plot <- renderUI({
     if(length(input$fot_subdomain_site)==0){
       maxi<-1L
@@ -1006,18 +1007,15 @@ shinyServer(function(input, output) {
 
   observeEvent(fot_listen(),{
     if(length(input$fot_subdomain_site)==0){
-      plotname <- "plot 1"
-      showplot <- ggplot() +
-        geom_blank() +
-        annotate("text",label='Select a specific check', x=0,y=0)+
-        theme(axis.text.x=element_blank(),
-              axis.ticks.x=element_blank(),
-              axis.text.y=element_blank(),
-              axis.ticks.y=element_blank(),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank())+
-        labs(x="",
-             y="")
+      plotname <- "plot1"
+      showplot<-plotly_empty(type="scatter",mode="markers")%>%
+        layout(
+          title=list(
+            text="Please make a selection for Site Specific Plots: Specific Check",
+            yref="paper",
+            y=0.5
+          )
+        )
       output[[plotname]] <- renderPlotly({showplot})
     }else{
       df_plots <- fot_output_site()%>%
@@ -1063,7 +1061,7 @@ shinyServer(function(input, output) {
   })
 
 
-  # domain concordance over all time
+  # DOMAIN CONCORDANCE -------
   output$dcon_overall_plot <- renderPlotly({
     if(length(input$dcon_check)==0){
       showplot <- ggplot() +
@@ -1194,7 +1192,7 @@ shinyServer(function(input, output) {
     return(ggplotly(showplot, tooltip="text"))
   })
 
-  # facts with missing visit id plots
+  # FACTS WITH MISSING VISIT IDS -----
   # overall
   output$mf_visitid_overall <- renderPlot({
     ggplot(mf_visitid_output(), aes(x=site, y=domain, fill=prop_missing_visits_total))+
@@ -1246,6 +1244,7 @@ shinyServer(function(input, output) {
     return(showplot)
   })
 
+  # EXPECTED CONCEPTS PRESENT -----
   output$ecp_plot <- renderPlotly({
     plt<-ggplot(ecp_output()%>%
                   mutate(text=paste0("site: ",site,
@@ -1277,7 +1276,7 @@ shinyServer(function(input, output) {
       coord_flip()
   })
 
-  ### SSDQA ISSUES
+  # SSDQA ISSUES -------
   # adjust available domain
 
 #   ssdqa_issues <- reactive({results_tbl('ssdqa_issues_ops_226', results_tag=FALSE)%>%collect()})

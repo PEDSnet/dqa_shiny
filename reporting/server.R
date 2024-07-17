@@ -10,6 +10,8 @@ library(tidyr)
 library(RColorBrewer)
 library(forcats)
 
+#' Function for replacing site names with masked identifiers
+#' if mask_site is set to TRUE in run.R
 res <- function(tbl_name) {
   rslt <- results_tbl(tbl_name) %>% collect()
   if (config('mask_site')) {
@@ -24,7 +26,8 @@ res <- function(tbl_name) {
   rslt
 }
 
-# Function for plotting site-specific FOT plots
+#' Function for plotting site-specific FOT plots
+#' with counts on one axis and normalized counts on the other
 plot_fot_fn <- function(data) {
   ay <- list(
     tickfont = list(color = "red"),
@@ -57,19 +60,20 @@ plot_fot_fn <- function(data) {
 }
 
 shinyServer(function(input, output) {
-  # changes between data cycles -------
-  # capture data
+  # DATA CAPTURE -------
+  ## data cycle changes
+  ### pp data
   dc_output_all <- reactive({
     res('dc_output_pp')%>%filter(domain!='measurement_anthro')
   })
 
-  # adjust available site name
+  ### adjust available site name
   observeEvent(dc_output_all(), {
     choices_new<-c("total",unique(dc_output_all()$site)%>%sort())
     updateSelectInput(inputId="sitename_dc", choices=choices_new)
   })
 
-  # update choices for domain
+  ### update choices for domain
   observeEvent(dc_output_all(), {
     choices_pp<-gsub("_.*","",dc_output_all()$domain)
     choices_new<-unique(choices_pp)%>%
@@ -77,13 +81,13 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId="dc_domain", choices=choices_new)
   })
 
-  # filter data for plotting
+  ### filter data for plotting
   dc_output <- reactive({
     res('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
       filter(str_detect(domain,input$dc_domain))
   })
 
-  # update choices for subdomain
+  ### update choices for subdomain
   observeEvent(dc_output(), {
     choices_new<-unique(dc_output()$domain)
     updateCheckboxGroupInput(inputId="dc_subdomain", choices=choices_new)
@@ -91,7 +95,7 @@ shinyServer(function(input, output) {
 
 
   # vocabulary and valueset conformance ------------
-  # capture data
+  ### pp data
   vc_vs_output <- reactive({
     res('vc_vs_output_pp') %>%
       mutate(prop_viol=round(tot_prop,2))
@@ -100,17 +104,8 @@ shinyServer(function(input, output) {
   vc_vs_violations <- reactive({
     res('vc_vs_violations_pp') %>%
       mutate(prop_viol=round(tot_prop,2))
-    # results_tbl('vc_vs_violations') %>%
-    #   collect()%>%
-    #   mutate(site=case_when(config('mask_site')~site_anon,
-    #                         TRUE~site))%>%
-    #   group_by(site, check_type, table_application, measurement_column, vocabulary_id)%>%
-    #   summarise(tot_viol=sum(total_viol_ct),
-    #             tot_rows=min(total_denom_ct))%>% # denom is the same for all in group
-    #   ungroup() %>%
-    #   mutate(prop_viol=round(tot_viol/tot_rows,2))
   })
-  # adjust available site name
+  ### adjust available site name
   observeEvent(vc_vs_violations(), {
     sites_w_viol<-vc_vs_violations()%>%filter(check_type=='vs')
     choices_new<-c("total", unique(sites_w_viol$site)%>%sort())
@@ -121,7 +116,7 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId = "sitename_vc_conf", choices=choices_new)
   })
 
-  # acceptable vocabularies for vc
+  ### acceptable vocabularies for vc
   vc_vocabs_accept <- results_tbl('dqa_check_metadata') %>%
     filter(check_type=='Vocabulary Conformance')%>%
     collect()%>%
@@ -129,7 +124,7 @@ shinyServer(function(input, output) {
     select(check_domain, check_application, acceptable_vocabulary)
 
   # unmapped concepts -----
-  # capture data
+  ### pp data
   uc_output <- reactive({
     res('uc_output_pp')
   })
@@ -158,25 +153,25 @@ shinyServer(function(input, output) {
         by = c('unmapped_description'='measure'))%>%
       mutate(proportion_of_unmapped=round(src_value_ct/unmapped_rows,2))
   })
-  # adjust available site name
+  ### adjust available site name
   observeEvent(uc_output(), {
     choices_new<-c("total", unique(uc_output()$site)%>%sort())
     updateSelectInput(inputId = "sitename_uc", choices=choices_new)
   })
 
   # person facts/records -------
-  # capture data
+  ### capture data
   pf_output <- reactive({
     res('pf_output_pp')
   })
-  # adjust available site name
+  ### adjust available site name
   observeEvent(pf_output(), {
     choices_new<-c("total", unique(pf_output()$site)%>%sort())
     updateSelectInput(inputId = "sitename_pf", choices=choices_new)
   })
 
   # best mapped concepts ----
-  # fetch data
+  ### fetch data
   top_rolled <-  results_tbl('bmc_gen_output_concepts_pp')%>%
     filter(include_new==0)%>%
     collect()%>%
@@ -410,7 +405,7 @@ shinyServer(function(input, output) {
   )
 
   # PLOTS ------
-  # CHANGES BETWEEN DATA CYCLES ------------------------------
+  ## CHANGES BETWEEN DATA CYCLES ------------------------------
   output$dc_mappings <- DT::renderDT(
     DT::datatable(
       dc_mappings,
@@ -856,21 +851,21 @@ shinyServer(function(input, output) {
   )
   output$pf_overall_bysite_plot <- renderPlot({
     if(input$sitename_pf=="total"){
-      outplot <- ggplot(pf_output(), aes(x=visit_type, y = fact_visits_prop, fill=site)) +
-        geom_bar(stat='identity', position="dodge")+
-        facet_wrap(~check_description)+
-        ylim(c(0,1))+
-        theme_bw()+
-        scale_fill_manual(values=site_colors)+
-        labs(x="Check Description",
-             y="Proportion Visits with Fact")+
-        theme(axis.text.x = element_text(size=12),
-              axis.text.y = element_text(size=12),
-              axis.title=element_text(size=18))+
-        coord_flip()
+      outplot <- ggplot()+
+        geom_blank()+
+        annotate("text", label="Select a site", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
     }
     else{
-      outplot <- ggplot(filter(pf_output(),site==input$sitename_pf), aes(x=check_description, y = fact_visits_prop, label=fact_visits_prop, fill=site)) +
+      outplot <- ggplot(filter(pf_output(),site==input$sitename_pf),
+                        aes(x=check_desc_neat, y = fact_visits_prop, label=fact_visits_prop, fill=site)) +
         geom_bar(stat='identity')+
         geom_label(fill="white")+
         facet_wrap(~visit_type)+
@@ -892,9 +887,10 @@ shinyServer(function(input, output) {
     if(input$sitename_pf=="total"){
       outplot <- ggplot(pf_output()%>%
                           mutate(text=paste0("site: ",site,
-                                             "\ncheck_description: ",check_description,
+                                             "\ncheck: ",check_desc_neat,
                                              "\nprop. visits: ",fact_visits_prop,
-                                             "\nprop. patients: ",fact_pts_prop)), aes(x=site, y=check_description, fill=fact_pts_prop, text=text))+
+                                             "\nprop. patients: ",fact_pts_prop)),
+                        aes(x=site, y=check_desc_neat, fill=fact_pts_prop, text=text))+
         geom_tile() +
         theme_bw()+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
@@ -906,9 +902,10 @@ shinyServer(function(input, output) {
     else{
       outplot <- ggplot(filter(pf_output(),site==input$sitename_pf)%>%
                           mutate(text=paste0("site: ",site,
-                                             "\ncheck_description: ",check_description,
+                                             "\ncheck: ",check_desc_neat,
                                              "\nprop. visits: ",fact_visits_prop,
-                                             "\nprop. patients: ",fact_pts_prop)), aes(x=site, y=check_description, fill=fact_pts_prop, text=text))+
+                                             "\nprop. patients: ",fact_pts_prop)),
+                        aes(x=site, y=check_desc_neat, fill=fact_pts_prop, text=text))+
         geom_tile() +
         theme_bw()+
         labs(y="",
@@ -951,8 +948,6 @@ shinyServer(function(input, output) {
     }
     return(ggplotly(outplot,tooltip="text"))
   })
-
-  #------------
 
   # FACTS OVER TIME -----
   ### overall plot

@@ -83,8 +83,22 @@ shinyServer(function(input, output) {
 
   ### filter data for plotting
   dc_output <- reactive({
+    if(input$largen_toggle==1){
     res('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
       filter(str_detect(domain,input$dc_domain))
+    }else{
+      res('dc_output_ln')%>%filter(domain!='measurement_anthro')%>%
+        filter(str_detect(domain,input$dc_domain),
+               (site%in%c('median_val',
+                                    'q1',
+                                    'q3')|
+                  site==input$sitename_dc_ln))
+    }
+  })
+  ### adjust available site name for large n comparison
+  observeEvent(dc_output(), {
+    choices_new<-unique((dc_output_all()%>%filter(site!='total'))$site)%>%sort()
+    updateSelectInput(inputId="sitename_dc_ln", choices=choices_new)
   })
 
   ### update choices for subdomain
@@ -405,7 +419,7 @@ shinyServer(function(input, output) {
   )
 
   # PLOTS ------
-  ## CHANGES BETWEEN DATA CYCLES ------------------------------
+  # CHANGES BETWEEN DATA CYCLES ------------------------------
   output$dc_mappings <- DT::renderDT(
     DT::datatable(
       dc_mappings,
@@ -430,6 +444,7 @@ shinyServer(function(input, output) {
           labs(x="",
                y="")
       }else{
+        if(input$largen_toggle==1){
         showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&application=='rows'),
                          aes(x=site,y=prop_total_change, fill=site))+
           geom_bar(stat='identity')+
@@ -442,6 +457,19 @@ shinyServer(function(input, output) {
           facet_wrap(~domain)+
           labs(x="Site",
                y="Record Proportion Change")
+        }else{
+          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain),
+                           aes(x=site,y=plot_prop, fill=site))+
+            geom_bar(stat='identity')+
+            theme_bw()+
+            theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+                  axis.text.y=element_text(size=12),
+                  axis.title=element_text(size=16),
+                  legend.position = "none")+
+            facet_wrap(~domain)+
+            labs(x="Site",
+                 y="Record Proportion Change")
+        }
       }
     }
     else{
@@ -569,13 +597,13 @@ shinyServer(function(input, output) {
   output$dc_overall <- renderPlotly({
     if(input$sitename_dc=='total'){
       indata <- filter(dc_output_all(), application=='rows')
-    }
-    else {
+    }else{
       indata <- filter(dc_output_all(),site==input$sitename_dc&
                          application=='rows')
     }
     tc_prev<-paste0('total_ct_',config('db_previous'))
     tc_new<-paste0('total_ct_',config('db_current'))
+    if(input$largen_toggle==1){
     plt<-ggplot(indata%>%mutate(
                                 text=paste0("site: ",site,
                                             "\ndomain: ",domain,
@@ -590,6 +618,17 @@ shinyServer(function(input, output) {
       theme(axis.text.y= element_text(hjust=1,size=9),
             axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
             axis.title=element_text(size=16))
+    }else{
+      plt<-ggplot(indata%>%mutate(
+        text=paste0("site: ",site,
+                    "\ndomain: ",domain,
+                    "\nproportion change: ",prop_total_change,
+                    "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
+                    "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
+      )+
+        geom_point(aes(x=domain,y=plot_prop, text=text))
+
+    }
     return(ggplotly(plt, tooltip="text"))
   })
 

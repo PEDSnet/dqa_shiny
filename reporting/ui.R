@@ -32,6 +32,12 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                         tags$h4("Welcome to the PEDSnet Data Quality Dashboard!"),
                         tags$h6("Report Refresh Date:", Sys.Date()),
                         tags$h6("Current Database Version:", config('db_current')),
+                        radioButtons(inputId="largen_toggle",
+                                     label="Display Type",
+                                     choices=list('Individual Sites'=1,
+                                               'Summary Metrics'=2),
+                                     selected=1),
+                        tags$p("Selecting Individual Sites will display the default dashboard, where each site is displayed individually and against each other site. Selecting Summary Metrics will modify the visualizations to compare each site against overall metrics across the other sites. This option is helpful to de-clutter if there are a large number of sites."),
                         tags$p("Contact pedsnetdcc@chop.edu for more information")
                       ),
                       mainPanel(
@@ -49,6 +55,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    selectInput(inputId="sitename_dc",
                                                label="Institution",
                                                choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_dc == 'total'",
+                                     selectInput(inputId="sitename_dc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   ),
                                    selectInput(inputId = "dc_domain",
                                                label="Domain",
                                                choices = c('adt')), # set a default to avoid empty string detection

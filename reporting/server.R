@@ -64,7 +64,9 @@ shinyServer(function(input, output) {
   ## data cycle changes
   ### pp data
   dc_output_all <- reactive({
+    if(input$largen_toggle==1){
     res('dc_output_pp')%>%filter(domain!='measurement_anthro')
+    }else{res('dc_output_ln')%>%filter(domain!='measurement_anthro')}
   })
 
   ### adjust available site name
@@ -88,15 +90,11 @@ shinyServer(function(input, output) {
       filter(str_detect(domain,input$dc_domain))
     }else{
       res('dc_output_ln')%>%filter(domain!='measurement_anthro')%>%
-        filter(str_detect(domain,input$dc_domain),
-               (site%in%c('median_val',
-                                    'q1',
-                                    'q3')|
-                  site==input$sitename_dc_ln))
+        filter(str_detect(domain,input$dc_domain))
     }
   })
   ### adjust available site name for large n comparison
-  observeEvent(dc_output(), {
+  observeEvent(dc_output_all(), {
     choices_new<-unique((dc_output_all()%>%filter(site!='total'))$site)%>%sort()
     updateSelectInput(inputId="sitename_dc_ln", choices=choices_new)
   })
@@ -431,6 +429,7 @@ shinyServer(function(input, output) {
   # changes between data cycles - record counts
   output$dc_domain_split <- renderPlot({
     if(input$sitename_dc=="total"){
+      # nothing selected: blank plot
       if(length(input$dc_subdomain)==0){
         showplot <- ggplot()+
           geom_blank()+
@@ -444,6 +443,7 @@ shinyServer(function(input, output) {
           labs(x="",
                y="")
       }else{
+        # individual sites: total
         if(input$largen_toggle==1){
         showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&application=='rows'),
                          aes(x=site,y=prop_total_change, fill=site))+
@@ -458,21 +458,25 @@ shinyServer(function(input, output) {
           labs(x="Site",
                y="Record Proportion Change")
         }else{
-          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain),
-                           aes(x=site,y=plot_prop, fill=site))+
-            geom_bar(stat='identity')+
+          # summary metrics: total
+          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&site==input$sitename_dc_ln&application=="rows"),
+                           aes(x=domain,y=prop_total_change))+
+            geom_bar(stat="identity",aes(fill=site))+
+            geom_errorbar(aes(ymin=q1,ymax=q3))+
+            geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
             theme_bw()+
+            scale_fill_manual(values=site_colors)+
             theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
                   axis.text.y=element_text(size=12),
                   axis.title=element_text(size=16),
                   legend.position = "none")+
-            facet_wrap(~domain)+
             labs(x="Site",
                  y="Record Proportion Change")
         }
       }
     }
     else{
+      # blank plot: need to make a selection
       if(length(input$dc_subdomain)==0){
         showplot <- ggplot()+
           geom_blank()+
@@ -486,11 +490,10 @@ shinyServer(function(input, output) {
           labs(x="",
                y="")
       }
+      # individual sites OR summary metrics (same plot)
       else{
         tc_prev<-paste0('total_ct_',config('db_previous'))
         tc_new<-paste0('total_ct_',config('db_current'))
-        #pc_prev<-paste0('total_pt_ct_', config('db_previous'))
-        #pc_new<-paste0('total_pt_ct_',config('db_current'))
         showplot<- ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
                                    site==input$sitename_dc&
                                    application=='rows'), aes(x=site,y=prop_total_change))+
@@ -509,6 +512,7 @@ shinyServer(function(input, output) {
   # changes between data cycles - person counts
   output$dc_domain_split_persons <- renderPlot({
     if(input$sitename_dc=="total"){
+      # blank plot if nothing selected
       if(length(input$dc_subdomain)==0){
         showplot <- ggplot()+
           geom_blank()+
@@ -534,6 +538,8 @@ shinyServer(function(input, output) {
           labs(x="",
                y="")
       }else{
+        if(input$largen_toggle==1){
+        # individual sites: total
         showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
                                   application=='person'),
                          aes(x=site,y=prop_total_change, fill=site))+
@@ -547,6 +553,21 @@ shinyServer(function(input, output) {
           facet_wrap(~domain)+
           labs(x="Site",
                y="Person Proportion Change")
+        }else{
+          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&site==input$sitename_dc_ln&application=="person"),
+                           aes(x=domain,y=prop_total_change))+
+            geom_bar(stat="identity",aes(fill=site))+
+            geom_errorbar(aes(ymin=q1,ymax=q3))+
+            geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
+            theme_bw()+
+            scale_fill_manual(values=site_colors)+
+            theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+                  axis.text.y=element_text(size=12),
+                  axis.title=element_text(size=16),
+                  legend.position = "none")+
+            labs(x="Site",
+                 y="Person Proportion Change")
+        }
       }
     }
     else{
@@ -596,14 +617,16 @@ shinyServer(function(input, output) {
 
   output$dc_overall <- renderPlotly({
     if(input$sitename_dc=='total'){
+      if(input$largen_toggle==1){
       indata <- filter(dc_output_all(), application=='rows')
+      }else{indata<-filter(dc_output_all(), site==input$sitename_dc_ln&application=='rows')}
     }else{
       indata <- filter(dc_output_all(),site==input$sitename_dc&
                          application=='rows')
     }
     tc_prev<-paste0('total_ct_',config('db_previous'))
     tc_new<-paste0('total_ct_',config('db_current'))
-    if(input$largen_toggle==1){
+    if(input$largen_toggle==1|(input$largen_toggle==2&input$sitename_dc!='total')){
     plt<-ggplot(indata%>%mutate(
                                 text=paste0("site: ",site,
                                             "\ndomain: ",domain,
@@ -623,10 +646,18 @@ shinyServer(function(input, output) {
         text=paste0("site: ",site,
                     "\ndomain: ",domain,
                     "\nproportion change: ",prop_total_change,
-                    "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
-                    "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
+                    "\noverall median: ", median_val,
+                    "\n(Q1, Q3) : (", q1, ", ", q3, ")")),
+        aes(x=domain, text=text)
       )+
-        geom_point(aes(x=domain,y=plot_prop, text=text))
+        geom_bar(aes(y=prop_total_change, fill=site), stat="identity")+
+        scale_fill_manual(values=site_colors)+
+        geom_errorbar(aes(ymin=q1, ymax=q3),width=0.1, size=1)+
+        geom_point(aes(y=median_val), shape=23, size=1)+
+        theme_bw()+
+        labs(y="Proportion Total Change")+
+        theme(legend.position="none")+
+        coord_flip()
 
     }
     return(ggplotly(plt, tooltip="text"))

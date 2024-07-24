@@ -1267,7 +1267,11 @@ shinyServer(function(input, output) {
       labs(x="Concept Group",
            y="Proportion",
            title="Proportion of Patients with Expected Concept")+
-      theme(legend.position = "none")+
+      theme(legend.position = "none",
+            axis.text.y = element_text(size=14),
+            axis.text.x=element_text(size=14),
+            axis.title.x=element_text(size=14),
+            axis.title.y=element_text(size=14))+
       coord_flip()
   })
 

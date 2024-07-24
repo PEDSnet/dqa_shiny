@@ -290,7 +290,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    fluidRow(
                                      box(title="Overall Expected Concepts Present",
                                          width=12,
-                                         plotlyOutput("ecp_plot")),
+                                         plotlyOutput("ecp_plot", height=600)),
                                      box(title="Site-Specific Expected Concepts Present",
                                          width=12,
                                          plotOutput("ecp_plot_site"))

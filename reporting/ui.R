@@ -129,6 +129,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    selectInput(inputId = "sitename_uc",
                                                label = "Institution",
                                                choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_uc == 'total'",
+                                     selectInput(inputId="sitename_uc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   ),
                                    sliderInput("date_uc_range",
                                                label="Date Range",
                                                min=1990L,
@@ -147,7 +154,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                             plotOutput("uc_overall_plot",height=600,width=1000)),
                                        tabPanel("Top Unmapped Source Values",
                                                 h6("Top 10 unmapped source values per column per site"),
-                                                p("proportion_of_unmapped is the count of the given source value divided by the number of unmapped rows for that column"),
+                                                p("proportion_of_unmapped is the count of the given source value divided by the number of unmapped rows for that column. Not displayed for Summary Metrics"),
                                                 DT::dataTableOutput("uc_top_tbl", width=1000)))),
                                     fluidRow(box(title="Unmapped Concepts by Year", width=12,
                                          plotOutput("uc_yr_plot", height=600)))

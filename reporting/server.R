@@ -138,7 +138,11 @@ shinyServer(function(input, output) {
   # unmapped concepts -----
   ### pp data
   uc_output <- reactive({
+    if(input$largen_toggle==1){
     res('uc_output_pp')
+    }else{
+      res('uc_output_ln')
+    }
   })
   uc_yr_output <- reactive({
     res('uc_by_year_pp') %>%
@@ -169,6 +173,11 @@ shinyServer(function(input, output) {
   observeEvent(uc_output(), {
     choices_new<-c("total", unique(uc_output()$site)%>%sort())
     updateSelectInput(inputId = "sitename_uc", choices=choices_new)
+  })
+  ### adjust available site name for large n comparison
+  observeEvent(uc_output(), {
+    choices_new<-unique((dc_output_all()%>%filter(site!='total'))$site)%>%sort()
+    updateSelectInput(inputId="sitename_uc_ln", choices=choices_new)
   })
 
   # person facts/records -------
@@ -463,6 +472,8 @@ shinyServer(function(input, output) {
                            aes(x=domain,y=prop_total_change))+
             geom_bar(stat="identity",aes(fill=site))+
             geom_errorbar(aes(ymin=q1,ymax=q3))+
+           # geom_point(aes(y=q1), shape="\U2014", size=9)+
+           # geom_point(aes(y=q3), shape="\U2014", size=9)+
             geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
             theme_bw()+
             scale_fill_manual(values=site_colors)+
@@ -558,6 +569,8 @@ shinyServer(function(input, output) {
                            aes(x=domain,y=prop_total_change))+
             geom_bar(stat="identity",aes(fill=site))+
             geom_errorbar(aes(ymin=q1,ymax=q3))+
+           # geom_point(aes(y=q1), shape="\U2014", size=9)+
+           # geom_point(aes(y=q3), shape="\U2014", size=9)+
             geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
             theme_bw()+
             scale_fill_manual(values=site_colors)+
@@ -615,6 +628,7 @@ shinyServer(function(input, output) {
     return(showplot)
   })
 
+  # overall plot
   output$dc_overall <- renderPlotly({
     if(input$sitename_dc=='total'){
       if(input$largen_toggle==1){
@@ -652,7 +666,8 @@ shinyServer(function(input, output) {
       )+
         geom_bar(aes(y=prop_total_change, fill=site), stat="identity")+
         scale_fill_manual(values=site_colors)+
-        geom_errorbar(aes(ymin=q1, ymax=q3),width=0.1, size=1)+
+        #geom_errorbar(aes(ymin=q1, ymax=q3), width=0.01)+
+        geom_linerange(aes(ymin=q1, ymax=q3))+
         geom_point(aes(y=median_val), shape=23, size=1)+
         theme_bw()+
         labs(y="Proportion Total Change")+
@@ -837,6 +852,7 @@ shinyServer(function(input, output) {
   # UNMAPPED CONCEPTS --------
   output$uc_overall_plot <- renderPlot({
     if(input$sitename_uc=="total"){
+      if(input$largen_toggle==1){
       outplot <- ggplot(uc_output(), aes(x = site, y = unmapped_prop, fill=site)) +
         geom_bar(stat='identity')+
         facet_wrap(~measure, scales="free_x")+
@@ -847,6 +863,21 @@ shinyServer(function(input, output) {
         scale_fill_manual(values=site_colors)+
         labs(x="Site",
              y="Proportion Unmapped Concepts")
+      }else{
+        outplot <- ggplot(filter(uc_output(),
+                                 site==input$sitename_uc_ln),
+                          aes(x = measure, y = unmapped_prop, fill=site)) +
+          geom_bar(stat='identity')+
+          scale_fill_manual(values=site_colors)+
+          geom_errorbar(aes(ymin=q1, ymax=q3))+
+          geom_point(aes(y=median_val), shape=23, size=1)+
+          theme_bw()+
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
+                axis.title=element_text(size=18),
+                legend.position="none")+
+          labs(x="Site",
+               y="Proportion Unmapped Concepts")
+      }
     }
     else{
       outplot <- ggplot(filter(uc_output(),site==input$sitename_uc), aes(x = measure, y = unmapped_prop, fill=site, label=unmapped_prop)) +
@@ -897,11 +928,11 @@ shinyServer(function(input, output) {
   })
 
   output$uc_top_tbl <- DT::renderDT({
-    if(input$sitename_uc=="total"){
+    if(input$largen_toggle==2){outtable<-data.frame()}
+    else if(input$sitename_uc=="total"){
       outtable <- uc_top_output_overall()%>%
         select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
-    }
-    else{
+    }else{
       outtable <- filter(uc_top_output(), site==input$sitename_uc) %>%
         select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
     }

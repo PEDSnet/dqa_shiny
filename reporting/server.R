@@ -16,12 +16,12 @@ res <- function(tbl_name) {
   rslt <- results_tbl(tbl_name) %>% collect()
   if (config('mask_site')) {
     rslt <- mutate(rslt, site =
-             case_when(str_detect(site_anon, '[0-9]') ~
-                         paste0(str_extract(site_anon, '^[^0-9]+'),
-                                sprintf('%02d',
-                                        as.integer(str_extract(site_anon,
-                                                               '[0-9]+')))),
-                       TRUE ~ site_anon))
+                     case_when(str_detect(site_anon, '[0-9]') ~
+                                 paste0(str_extract(site_anon, '^[^0-9]+'),
+                                        sprintf('%02d',
+                                                as.integer(str_extract(site_anon,
+                                                                       '[0-9]+')))),
+                               TRUE ~ site_anon))
   }
   rslt
 }
@@ -65,7 +65,7 @@ shinyServer(function(input, output) {
   ### pp data
   dc_output_all <- reactive({
     if(input$largen_toggle==1){
-    res('dc_output_pp')%>%filter(domain!='measurement_anthro')
+      res('dc_output_pp')%>%filter(domain!='measurement_anthro')
     }else{res('dc_output_ln')%>%filter(domain!='measurement_anthro')}
   })
 
@@ -86,8 +86,8 @@ shinyServer(function(input, output) {
   ### filter data for plotting
   dc_output <- reactive({
     if(input$largen_toggle==1){
-    res('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
-      filter(str_detect(domain,input$dc_domain))
+      res('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
+        filter(str_detect(domain,input$dc_domain))
     }else{
       res('dc_output_ln')%>%filter(domain!='measurement_anthro')%>%
         filter(str_detect(domain,input$dc_domain))
@@ -139,7 +139,7 @@ shinyServer(function(input, output) {
   ### pp data
   uc_output <- reactive({
     if(input$largen_toggle==1){
-    res('uc_output_pp')
+      res('uc_output_pp')
     }else{
       res('uc_output_ln')
     }
@@ -184,7 +184,7 @@ shinyServer(function(input, output) {
   ### capture data
   pf_output <- reactive({
     if(input$largen_toggle==1){
-    res('pf_output_pp')
+      res('pf_output_pp')
     }else{res('pf_output_ln')}
   })
   ### adjust available site name
@@ -214,8 +214,8 @@ shinyServer(function(input, output) {
 
   bmc_pp <- reactive({
     if(input$largen_toggle==1){
-    res('bmc_gen_output_pp')%>%
-      left_join(top_rolled, by = c('site', 'check_desc'))
+      res('bmc_gen_output_pp')%>%
+        left_join(top_rolled, by = c('site', 'check_desc'))
     }else{
       res('bmc_gen_output_ln')%>%
         left_join(top_rolled, by = c('site', 'check_desc'))
@@ -315,12 +315,6 @@ shinyServer(function(input, output) {
              check_desc%in%input$fot_subdomain_site)
   })
 
-
-
-  # fot_output_summary <- reactive({res('fot_output_distance_pp') %>%
-  #     filter(domain==input$fot_domain)
-  # })
-
   # adjust available site name
   observeEvent(fot_output(), {
     choices_new<-unique(filter(fot_output(),site!='all')$site)%>%sort()
@@ -340,25 +334,24 @@ shinyServer(function(input, output) {
   # domain concordance -----
   # capture data
   dcon_output <- reactive({
-    res('dcon_output_pp') %>%
+    if(input$largen_toggle==1){
+      indat<-res('dcon_output_pp')
+    }else{
+      indat<-res('dcon_output_ln')
+    }
+    indat%>%
       mutate(cohort=factor(cohort, levels=c("cohort_2_only", "combined", "cohort_1_only",
                                             "cohort_1_denom", "cohort_2_in_1",
                                             "cohort_2_denom", "cohort_1_in_2"),
                            labels=c("cohort 2 only", "combined", "cohort 1 only",
                                     "cohort 1 not 2", "cohort 2 in 1",
-                                    "cohort 2 not 1", "cohort 1 in 2")))#%>%
+                                    "cohort 2 not 1", "cohort 1 in 2")))
   })
 
   observeEvent(dcon_output(), {
     choices_new<-unique(dcon_output()$check_name)
     updateCheckboxGroupInput(inputId="dcon_check", choices=choices_new)
   })
-
-  # dcon_output_byyr <- reactive({
-  #   results_tbl(name='dcon_output_pp_byyr')%>%collect()%>%
-  #     mutate(site=case_when(config('mask_site')~site_anon,
-  #                           TRUE~site))
-  #})
   dcon_meta <- reactive({
     results_tbl('dcon_meta')%>%
       collect()%>%
@@ -372,6 +365,11 @@ shinyServer(function(input, output) {
     choices_new<-c("total", unique(dcon_output()$site)%>%sort())
     updateSelectInput(inputId = "sitename_dcon", choices=choices_new)
   })
+  ### adjust available site name for large n site comparison
+  observeEvent(dcon_output(), {
+    choices_new<-unique((dcon_output()%>%filter(site!='total'))$site)%>%sort()
+    updateSelectInput(inputId="sitename_dcon_ln", choices=choices_new)
+  })
   # descriptions of cohorts
   output$dcon_cohort_descr <- renderDT(
     DT::datatable(
@@ -383,13 +381,25 @@ shinyServer(function(input, output) {
   # facts with missing visit ids -------------
   # connect with data
   mf_visitid_output <- reactive({
-    res('mf_visitid_pp')
+    if(input$largen_toggle==1){
+      res('mf_visitid_pp')
+    }else{
+      res('mf_visitid_ln')
+    }
   })
 
   # update choices for site name
   observeEvent(mf_visitid_output(), {
-    choices_new<-c("total",unique(filter(mf_visitid_output(),site!='total')$site)%>%sort())
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(filter(mf_visitid_output(),site!='total')$site)%>%sort())
+    }else{choices_new<-choices_new<-unique((mf_visitid_output()%>%filter(site!='total'))$site)%>%sort()}
     updateSelectInput(inputId="sitename_mf_visitid", choices=choices_new)
+  })
+
+  ### adjust available site name for large n site comparison
+  observeEvent(mf_visitid_output(), {
+    choices_new<-unique((mf_visitid_output()%>%filter(site!='total'))$site)%>%sort()
+    updateSelectInput(inputId="sitename_mf_ln", choices=choices_new)
   })
 
   # update choices for domain
@@ -400,11 +410,11 @@ shinyServer(function(input, output) {
 
   # expected concepts present ---------------------
   ecp_output <- reactive({
-    res('ecp_output_pp')
+    if(input$largen_toggle==1){res('ecp_output_pp')}else{res('ecp_output_ln')}
   })
   # update choices for site name
   observeEvent(ecp_output(), {
-    choices_new<-unique(filter(mf_visitid_output(),site!='total')$site)%>%sort()
+    choices_new<-unique(filter(ecp_output(),site!='total')$site)%>%sort()
     updateSelectInput(inputId="sitename_ecp", choices=choices_new)
   })
 
@@ -412,10 +422,10 @@ shinyServer(function(input, output) {
   # other configurations ----------------------
 
   # set site colors based on table where all sites expected
-  site_list<-(res("dc_output_pp"))$site %>% unique()
+  site_list<-(res("dc_output_pp"))$site %>% unique() %>% append('allsite_mean') %>% append('allsite_median')
   #ramp_palette <- colorRampPalette(brewer.pal(8, "Dark2"))(length(site_list))
   ramp_palette<-pedsn_dq_pal(palette="main", reverse=FALSE)(length(site_list))
- # randomized_palette <- ramp_palette[sample(1:length(ramp_palette))]
+  # randomized_palette <- ramp_palette[sample(1:length(ramp_palette))]
   site_colors <- setNames(ramp_palette, site_list)
 
   dc_mappings <- results_tbl('dc_mappings')%>%collect()
@@ -471,26 +481,26 @@ shinyServer(function(input, output) {
       }else{
         # individual sites: total
         if(input$largen_toggle==1){
-        showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&application=='rows'),
-                         aes(x=site,y=prop_total_change, fill=site))+
-          geom_bar(stat='identity')+
-          theme_bw()+
-          scale_fill_manual(values=site_colors)+
-          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
-                axis.text.y=element_text(size=12),
-                axis.title=element_text(size=16),
-                legend.position = "none")+
-          facet_wrap(~domain)+
-          labs(x="Site",
-               y="Record Proportion Change")
+          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&application=='rows'),
+                           aes(x=site,y=prop_total_change, fill=site))+
+            geom_bar(stat='identity')+
+            theme_bw()+
+            scale_fill_manual(values=site_colors)+
+            theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+                  axis.text.y=element_text(size=12),
+                  axis.title=element_text(size=16),
+                  legend.position = "none")+
+            facet_wrap(~domain)+
+            labs(x="Site",
+                 y="Record Proportion Change")
         }else{
           # summary metrics: total
           showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&site==input$sitename_dc_ln&application=="rows"),
                            aes(x=domain,y=prop_total_change))+
             geom_bar(stat="identity",aes(fill=site))+
             geom_errorbar(aes(ymin=q1,ymax=q3))+
-           # geom_point(aes(y=q1), shape="\U2014", size=9)+
-           # geom_point(aes(y=q3), shape="\U2014", size=9)+
+            # geom_point(aes(y=q1), shape="\U2014", size=9)+
+            # geom_point(aes(y=q3), shape="\U2014", size=9)+
             geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
             theme_bw()+
             scale_fill_manual(values=site_colors)+
@@ -567,27 +577,27 @@ shinyServer(function(input, output) {
                y="")
       }else{
         if(input$largen_toggle==1){
-        # individual sites: total
-        showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
-                                  application=='person'),
-                         aes(x=site,y=prop_total_change, fill=site))+
-          geom_bar(stat='identity')+
-          theme_bw()+
-          scale_fill_manual(values=site_colors)+
-          theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
-                axis.text.y=element_text(size=12),
-                axis.title=element_text(size=16),
-                legend.position = "none")+
-          facet_wrap(~domain)+
-          labs(x="Site",
-               y="Person Proportion Change")
+          # individual sites: total
+          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
+                                    application=='person'),
+                           aes(x=site,y=prop_total_change, fill=site))+
+            geom_bar(stat='identity')+
+            theme_bw()+
+            scale_fill_manual(values=site_colors)+
+            theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+                  axis.text.y=element_text(size=12),
+                  axis.title=element_text(size=16),
+                  legend.position = "none")+
+            facet_wrap(~domain)+
+            labs(x="Site",
+                 y="Person Proportion Change")
         }else{
           showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&site==input$sitename_dc_ln&application=="person"),
                            aes(x=domain,y=prop_total_change))+
             geom_bar(stat="identity",aes(fill=site))+
             geom_errorbar(aes(ymin=q1,ymax=q3))+
-           # geom_point(aes(y=q1), shape="\U2014", size=9)+
-           # geom_point(aes(y=q3), shape="\U2014", size=9)+
+            # geom_point(aes(y=q1), shape="\U2014", size=9)+
+            # geom_point(aes(y=q3), shape="\U2014", size=9)+
             geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
             theme_bw()+
             scale_fill_manual(values=site_colors)+
@@ -649,7 +659,7 @@ shinyServer(function(input, output) {
   output$dc_overall <- renderPlotly({
     if(input$sitename_dc=='total'){
       if(input$largen_toggle==1){
-      indata <- filter(dc_output_all(), application=='rows')
+        indata <- filter(dc_output_all(), application=='rows')
       }else{indata<-filter(dc_output_all(), site==input$sitename_dc_ln&application=='rows')}
     }else{
       indata <- filter(dc_output_all(),site==input$sitename_dc&
@@ -658,20 +668,20 @@ shinyServer(function(input, output) {
     tc_prev<-paste0('total_ct_',config('db_previous'))
     tc_new<-paste0('total_ct_',config('db_current'))
     if(input$largen_toggle==1|(input$largen_toggle==2&input$sitename_dc!='total')){
-    plt<-ggplot(indata%>%mutate(
-                                text=paste0("site: ",site,
-                                            "\ndomain: ",domain,
-                                            "\nproportion change: ",prop_total_change,
-                                            "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
-                                            "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
-                aes(x=site, y=domain, fill=prop_total_change, text=text))+
-      geom_tile()+
-      scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
-      guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
-      theme_bw()+
-      theme(axis.text.y= element_text(hjust=1,size=9),
-            axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
-            axis.title=element_text(size=16))
+      plt<-ggplot(indata%>%mutate(
+        text=paste0("site: ",site,
+                    "\ndomain: ",domain,
+                    "\nproportion change: ",prop_total_change,
+                    "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
+                    "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
+        aes(x=site, y=domain, fill=prop_total_change, text=text))+
+        geom_tile()+
+        scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
+        guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
+        theme_bw()+
+        theme(axis.text.y= element_text(hjust=1,size=9),
+              axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
+              axis.title=element_text(size=16))
     }else{
       plt<-ggplot(indata%>%mutate(
         text=paste0("site: ",site,
@@ -698,7 +708,7 @@ shinyServer(function(input, output) {
   output$vs_plot <- renderPlot({
     if(input$sitename_vs_conf=='total'){
       outplot<-ggplot(filter(vc_vs_output(),check_type=='vs'),
-                     aes(x=site, y=tot_prop, fill=vocabulary_id))+
+                      aes(x=site, y=tot_prop, fill=vocabulary_id))+
         geom_bar(stat="identity",position="dodge")+
         scale_fill_pedsn_dq()+
         facet_wrap(~measurement_column, scales="free_x")+
@@ -764,16 +774,16 @@ shinyServer(function(input, output) {
   # VOCABULARY CONFORMANCE -----
   output$vc_overall_plot <- renderPlotly({
     if(input$sitename_vc_conf=='total'){
-    plt<-ggplot(filter(vc_vs_output(), check_type=='vc')%>%
-                  mutate(text=paste0("site: ",site,
-                                     "\nvocabulary: ",vocabulary_id,
-                                     "\nproportion: ",prop_viol)),
-           aes(x=site,y=tot_prop, fill=vocabulary_id, text=text))+
-      geom_bar(stat="identity",position="stack")+
-      scale_fill_pedsn_dq()+
-      facet_wrap(~table_application*measurement_column)+
-      theme_bw()+
-      theme(axis.text.x = element_text(angle=90))
+      plt<-ggplot(filter(vc_vs_output(), check_type=='vc')%>%
+                    mutate(text=paste0("site: ",site,
+                                       "\nvocabulary: ",vocabulary_id,
+                                       "\nproportion: ",prop_viol)),
+                  aes(x=site,y=tot_prop, fill=vocabulary_id, text=text))+
+        geom_bar(stat="identity",position="stack")+
+        scale_fill_pedsn_dq()+
+        facet_wrap(~table_application*measurement_column)+
+        theme_bw()+
+        theme(axis.text.x = element_text(angle=90))
     }else{
       plt<-ggplot(filter(vc_vs_output(), check_type=='vc'&site==input$sitename_vc_conf)%>%
                     mutate(text=paste0("site: ",site,
@@ -869,16 +879,16 @@ shinyServer(function(input, output) {
   output$uc_overall_plot <- renderPlot({
     if(input$sitename_uc=="total"){
       if(input$largen_toggle==1){
-      outplot <- ggplot(uc_output(), aes(x = site, y = unmapped_prop, fill=site)) +
-        geom_bar(stat='identity')+
-        facet_wrap(~measure, scales="free_x")+
-        theme_bw()+
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
-              axis.title=element_text(size=18),
-              legend.position="none")+
-        scale_fill_manual(values=site_colors)+
-        labs(x="Site",
-             y="Proportion Unmapped Concepts")
+        outplot <- ggplot(uc_output(), aes(x = site, y = unmapped_prop, fill=site)) +
+          geom_bar(stat='identity')+
+          facet_wrap(~measure, scales="free_x")+
+          theme_bw()+
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
+                axis.title=element_text(size=18),
+                legend.position="none")+
+          scale_fill_manual(values=site_colors)+
+          labs(x="Site",
+               y="Proportion Unmapped Concepts")
       }else{
         outplot <- ggplot(filter(uc_output(),
                                  site==input$sitename_uc_ln),
@@ -944,7 +954,7 @@ shinyServer(function(input, output) {
   })
 
   output$uc_top_tbl <- DT::renderDT({
-    if(input$largen_toggle==2){outtable<-data.frame()}
+    if(input$largen_toggle==2&input$sitename_uc=='total'){outtable<-data.frame()}
     else if(input$sitename_uc=="total"){
       outtable <- uc_top_output_overall()%>%
         select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
@@ -1005,19 +1015,19 @@ shinyServer(function(input, output) {
   output$pf_overall_heat_plot <- renderPlotly({
     if(input$sitename_pf=="total"){
       if(input$largen_toggle==1){
-      outplot <- ggplot(pf_output()%>%
-                          mutate(text=paste0("site: ",site,
-                                             "\ncheck: ",check_desc_neat,
-                                             "\nprop. visits: ",fact_visits_prop,
-                                             "\nprop. patients: ",fact_pts_prop)),
-                        aes(x=site, y=check_desc_neat, fill=fact_pts_prop, text=text))+
-        geom_tile() +
-        theme_bw()+
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
-        labs(x="",y="",
-             fill="Proportion Patients\nwith Fact")+
-        facet_wrap(~visit_type, scales = "free_x")+
-        scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
+        outplot <- ggplot(pf_output()%>%
+                            mutate(text=paste0("site: ",site,
+                                               "\ncheck: ",check_desc_neat,
+                                               "\nprop. visits: ",fact_visits_prop,
+                                               "\nprop. patients: ",fact_pts_prop)),
+                          aes(x=site, y=check_desc_neat, fill=fact_pts_prop, text=text))+
+          geom_tile() +
+          theme_bw()+
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+          labs(x="",y="",
+               fill="Proportion Patients\nwith Fact")+
+          facet_wrap(~visit_type, scales = "free_x")+
+          scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
       }else{
         outplot<-ggplot(pf_output()%>%filter(site==input$sitename_pf_ln)%>%
                           mutate(text=paste0("\nprop. patients: ",fact_pts_prop,
@@ -1058,17 +1068,17 @@ shinyServer(function(input, output) {
     if(input$sitename_bmc=="total"){
       # individual sites, overall
       if(input$largen_toggle==1){
-      outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'),
-                         aes(x=site, y=best_row_prop, fill=site,
-                             text=round(best_row_prop,2)))+
-        geom_bar(stat='identity')+
-        scale_fill_manual(values=site_colors)+
-        facet_wrap(~check_desc)+
-        labs(x="Site",
-             y="Proportion Best Mapped")+
-        coord_flip()+
-        theme_bw()+
-        theme(legend.position="none")
+        outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'),
+                           aes(x=site, y=best_row_prop, fill=site,
+                               text=round(best_row_prop,2)))+
+          geom_bar(stat='identity')+
+          scale_fill_manual(values=site_colors)+
+          facet_wrap(~check_desc)+
+          labs(x="Site",
+               y="Proportion Best Mapped")+
+          coord_flip()+
+          theme_bw()+
+          theme(legend.position="none")
       }else{
         # large n, overall
         outplot <- ggplot(filter(bmc_pp(),include_new==1L&site==input$sitename_bmc_ln)%>%
@@ -1107,29 +1117,35 @@ shinyServer(function(input, output) {
   # FACTS OVER TIME -----
   ### overall plot
   output$fot_summary_plot <- renderPlotly({
-    allsite_avg<-fot_output_summary_ratio()%>%filter(check_desc==input$fot_subdomain_overall&site=='allsite_median')
-    showplot <- ggplot(
-      fot_output_summary_ratio() %>%
-        filter(check_desc==input$fot_subdomain_overall&site!='allsite_median'),#%>%
-        # mutate(mt=as.character(month_end))%>%
-        # mutate(text=paste0("Site: ",site,
-        #                    "\nMonth: ",mt)),
-      aes(x=month_end,
-          y=row_ratio,
-          color=site,
-          group=site)
+    if(input$largen_toggle==1){
+      indat<-fot_output_summary_ratio() %>%
+        filter(check_desc==input$fot_subdomain_overall&!site%in%c('allsite_median',
+                                                                  'allsite_mean'))
+      allsite_avg<-fot_output_summary_ratio()%>%
+        filter(check_desc==input$fot_subdomain_overall&site=='allsite_median')
+    }else{
+      indat<-fot_output_summary_ratio() %>%
+        filter(check_desc==input$fot_subdomain_overall&site==input$sitename_fot)
+      allsite_avg<-fot_output_summary_ratio()%>%
+        filter(check_desc==input$fot_subdomain_overall&site%in%c('allsite_median','allsite_mean'))
+    }
+    showplot <- ggplot(indat,
+                       aes(x=month_end,
+                           y=row_ratio,
+                           color=site,
+                           group=site)
     )+
       geom_smooth(se=TRUE,alpha=0.1,linewidth=0.5,formula=y~x)+
       geom_smooth(data=allsite_avg, aes(x=month_end,
-                                      y=row_ratio,
-                                      color=site,
-                                      group=site),linewidth=1.5)+
+                                        y=row_ratio,
+                                        color=site,
+                                        group=site),linewidth=1)+
       scale_color_manual(values=site_colors) +
       theme_bw()+
       labs(x="Time (month)",
            y="Fact Rate (records per 10,000 visits)",
            title="Fact Rate over Time")+
-         scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))
+      scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))
     return(ggplotly(showplot))
   })
   ### site-specific plots
@@ -1227,80 +1243,105 @@ shinyServer(function(input, output) {
              y="")
     }
     else if(input$sitename_dcon=='total'){
-      if(input$denom_dcon=='Overall'){
-      showplot <- ggplot(filter(dcon_output(),
-                                site!='total',
-                                check_name%in%input$dcon_check,
-                                cohort%in%c("cohort 2 only", "combined", "cohort 1 only"))) +
-        geom_bar(aes(x=site,y=prop,fill=cohort,
-                     text=paste0("Cohort: ", cohort,
-                                 "\nProportion: ",round(prop,2))),
-                 stat='identity') +
-        scale_fill_pedsn_dq("triset")+
-        theme_bw()+
-        theme(axis.text.x=element_text(size=12),
-              axis.text.y=element_text(size=12),
-              axis.title=element_text(size=16))+
-        labs(x="Site",
-             y="Proportion")+
-        facet_wrap(~check_name)+
-        coord_flip()
-    }else if(input$denom_dcon=='Cohort 1'){
-      showplot <- ggplot(filter(dcon_output(),
-                                site!='total',
-                                check_name%in%input$dcon_check,
-                                cohort%in%c("cohort 1 not 2", "cohort 2 in 1"))) +
-        geom_bar(aes(x=site,y=prop,fill=cohort,
-                     text=paste0("Cohort: ", cohort,
-                                 "\nProportion: ",round(prop,2))),
-                 stat='identity') +
-        scale_fill_pedsn_dq("triset")+
-        theme_bw()+
-        theme(axis.text.x=element_text(size=12),
-              axis.text.y=element_text(size=12),
-              axis.title=element_text(size=16))+
-        labs(x="Site",
-             y="Proportion")+
-        facet_wrap(~check_name)+
-        coord_flip()
-    }else if(input$denom_dcon=='Cohort 2'){
-      showplot <- ggplot(filter(dcon_output(),
-                                site!='total',
-                                check_name%in%input$dcon_check,
-                                cohort%in%c("cohort 2 not 1", "cohort 1 in 2"))) +
-        geom_bar(aes(x=site,y=prop,fill=cohort,
-                     text=paste0("Cohort: ", cohort,
-                                 "\nProportion: ",round(prop,2))),
-                 stat='identity') +
-        scale_fill_pedsn_dq("triset")+
-        theme_bw()+
-        theme(axis.text.x=element_text(size=12),
-              axis.text.y=element_text(size=12),
-              axis.title=element_text(size=16))+
-        labs(x="Site",
-             y="Proportion")+
-        facet_wrap(~check_name)+
-        coord_flip()
-    }
+      if(input$largen_toggle==1){
+        if(input$denom_dcon=='Overall'){
+          showplot <- ggplot(filter(dcon_output(),
+                                    site!='total',
+                                    check_name%in%input$dcon_check,
+                                    cohort%in%c("cohort 2 only", "combined", "cohort 1 only"))) +
+            geom_bar(aes(x=site,y=prop,fill=cohort,
+                         text=paste0("Cohort: ", cohort,
+                                     "\nProportion: ",round(prop,2))),
+                     stat='identity') +
+            scale_fill_pedsn_dq("triset")+
+            theme_bw()+
+            theme(axis.text.x=element_text(size=12),
+                  axis.text.y=element_text(size=12),
+                  axis.title=element_text(size=16))+
+            labs(x="Site",
+                 y="Proportion")+
+            facet_wrap(~check_name)+
+            coord_flip()
+        }else if(input$denom_dcon=='Cohort 1'){
+          showplot <- ggplot(filter(dcon_output(),
+                                    site!='total',
+                                    check_name%in%input$dcon_check,
+                                    cohort%in%c("cohort 1 not 2", "cohort 2 in 1"))) +
+            geom_bar(aes(x=site,y=prop,fill=cohort,
+                         text=paste0("Cohort: ", cohort,
+                                     "\nProportion: ",round(prop,2))),
+                     stat='identity') +
+            scale_fill_pedsn_dq("triset")+
+            theme_bw()+
+            theme(axis.text.x=element_text(size=12),
+                  axis.text.y=element_text(size=12),
+                  axis.title=element_text(size=16))+
+            labs(x="Site",
+                 y="Proportion")+
+            facet_wrap(~check_name)+
+            coord_flip()
+        }else if(input$denom_dcon=='Cohort 2'){
+          showplot <- ggplot(filter(dcon_output(),
+                                    site!='total',
+                                    check_name%in%input$dcon_check,
+                                    cohort%in%c("cohort 2 not 1", "cohort 1 in 2"))) +
+            geom_bar(aes(x=site,y=prop,fill=cohort,
+                         text=paste0("Cohort: ", cohort,
+                                     "\nProportion: ",round(prop,2))),
+                     stat='identity') +
+            scale_fill_pedsn_dq("triset")+
+            theme_bw()+
+            theme(axis.text.x=element_text(size=12),
+                  axis.text.y=element_text(size=12),
+                  axis.title=element_text(size=16))+
+            labs(x="Site",
+                 y="Proportion")+
+            facet_wrap(~check_name)+
+            coord_flip()
+        }
+        # large n
+      }else{
+        showplot <- ggplot(filter(dcon_output(),
+                                  site==input$sitename_dcon_ln,
+                                  check_name%in%input$dcon_check,
+                                  cohort%in%c("cohort 1 only", "cohort 2 only", "combined")),
+                           aes(x=cohort)) +
+          geom_bar(aes(y=prop,fill=cohort,
+                       text=paste0("Cohort: ", cohort,
+                                   "\nProportion: ",round(prop,2),
+                                   "\nMedian (Q1, Q3): ",round(median_val,2), " ( ", round(q1,2), ", ", round(q3,2), ")")),
+                   stat='identity') +
+          geom_linerange(aes(ymin=q1, ymax=q3))+
+          geom_point(aes(y=median_val), shape=23, size=1)+
+          scale_fill_pedsn_dq("triset")+
+          theme_bw()+
+          theme(axis.text.x=element_text(size=12),
+                axis.text.y=element_text(size=12),
+                axis.title=element_text(size=16))+
+          labs(x="",
+               y="Proportion")+
+          facet_wrap(~check_name)+
+          coord_flip()
+      }
     }else{
       if(input$denom_dcon=="Overall"){
-      showplot <- ggplot(filter(dcon_output(),
-                                site==input$sitename_dcon&
-                                  check_name%in%input$dcon_check&
-                                  cohort%in%c("cohort 2 only", "combined", "cohort 1 only"))) +
-        geom_bar(aes(x=site,y=prop,fill=cohort,
-                     text=paste0("Cohort: ", cohort,
-                                 "\nProportion: ",round(prop,2))),
-                 stat='identity') +
-        scale_fill_pedsn_dq("triset")+
-        theme_bw()+
-        theme(axis.text.x=element_text(size=12),
-              axis.text.y=element_text(size=12),
-              axis.title=element_text(size=16))+
-        labs(x="Site",
-             y="Proportion")+
-        facet_wrap(~check_name)+
-        coord_flip()
+        showplot <- ggplot(filter(dcon_output(),
+                                  site==input$sitename_dcon&
+                                    check_name%in%input$dcon_check&
+                                    cohort%in%c("cohort 2 only", "combined", "cohort 1 only"))) +
+          geom_bar(aes(x=site,y=prop,fill=cohort,
+                       text=paste0("Cohort: ", cohort,
+                                   "\nProportion: ",round(prop,2))),
+                   stat='identity') +
+          scale_fill_pedsn_dq("triset")+
+          theme_bw()+
+          theme(axis.text.x=element_text(size=12),
+                axis.text.y=element_text(size=12),
+                axis.title=element_text(size=16))+
+          labs(x="Site",
+               y="Proportion")+
+          facet_wrap(~check_name)+
+          coord_flip()
       }else if(input$denom_dcon=="Cohort 1"){
         showplot <- ggplot(filter(dcon_output(),
                                   site==input$sitename_dcon&
@@ -1345,18 +1386,30 @@ shinyServer(function(input, output) {
   # FACTS WITH MISSING VISIT IDS -----
   # overall
   output$mf_visitid_overall <- renderPlot({
-    ggplot(mf_visitid_output(), aes(x=site, y=domain, fill=prop_missing_visits_total))+
-      geom_tile(color='white',lwd=0.5,linetype=1) +
-      scale_fill_gradient(limits=c(0.000001,1))+
-      guides(fill = guide_colourbar(barwidth=0.5,
-                                    barheight = 15,
-                                    title = 'Proportion Missing')) +
-      theme_bw()+
-      theme(axis.text.y= element_text(hjust=1, size=12),
-            axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
-            axis.title=element_text(size=16))+
-      facet_wrap(~domain, scales="free_y")+
-      scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
+    if(input$largen_toggle==1){
+      ggplot(mf_visitid_output(), aes(x=site, y=domain, fill=prop_missing_visits_total))+
+        geom_tile(color='white',lwd=0.5,linetype=1) +
+        scale_fill_gradient(limits=c(0.000001,1))+
+        guides(fill = guide_colourbar(barwidth=0.5,
+                                      barheight = 15,
+                                      title = 'Proportion Missing')) +
+        theme_bw()+
+        theme(axis.text.y= element_text(hjust=1, size=12),
+              axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
+              axis.title=element_text(size=16))+
+        facet_wrap(~domain, scales="free_y")+
+        scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
+    }else{
+      ggplot(mf_visitid_output()%>%filter(site==input$sitename_mf_visitid),
+             aes(x=domain))+
+        geom_bar(aes(y=prop_missing_visits_total, fill=site),stat="identity")+
+        scale_fill_manual(values=site_colors)+
+        geom_linerange(aes(ymin=q1, ymax=q3))+
+        geom_point(aes(y=median_val), shape=23, size=1)+
+        theme_bw()+
+        labs(x="Domain",
+             y="Proportion missing visit_occurrence_id")
+    }
 
 
   })
@@ -1396,18 +1449,37 @@ shinyServer(function(input, output) {
 
   # EXPECTED CONCEPTS PRESENT -----
   output$ecp_plot <- renderPlotly({
-    plt<-ggplot(ecp_output()%>%
-                  mutate(text=paste0("site: ",site,
-                                     "\nproportion: ",round(prop_with_concept,2))),
-                aes(x=site, y=prop_with_concept, fill=site, text=text))+
-      geom_bar(stat="identity")+
-      scale_fill_manual(values=site_colors)+
-      theme_bw()+
-      labs(y="Proportion",
-           title="Proportion of Patients with Expected Concept")+
-      theme(legend.position = "none")+
-      facet_wrap(~concept_group)+
-      coord_flip()
+    if(input$largen_toggle==1){
+      plt<-ggplot(ecp_output()%>%
+                    mutate(text=paste0("site: ",site,
+                                       "\nproportion: ",round(prop_with_concept,2))),
+                  aes(x=site, y=prop_with_concept, fill=site, text=text))+
+        geom_bar(stat="identity")+
+        scale_fill_manual(values=site_colors)+
+        theme_bw()+
+        labs(y="Proportion",
+             title="Proportion of Patients with Expected Concept")+
+        theme(legend.position = "none")+
+        facet_wrap(~concept_group)+
+        coord_flip()
+    }else{
+      plt<-ggplot(ecp_output()%>%
+                    filter(site==input$sitename_ecp)%>%
+                    mutate(text=paste0("Concept group: ",concept_group,
+                                       "\nProportion with concept: ", round(prop_with_concept,2),
+                                       "\nMedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
+                  aes(x=concept_group, text=text, fill=site))+
+        geom_bar(aes(y=prop_with_concept), stat="identity")+
+        scale_fill_manual(values=site_colors)+
+        geom_linerange(aes(ymin=q1, ymax=q3))+
+        geom_point(aes(y=median_val), shape=23, size=1)+
+        labs(x="Concept Group",
+             y="Proportion with Concept",
+             title="Proportion of Patients with Expected Concepts")+
+        theme_bw()+
+        coord_flip()+
+        theme(legend.position="none")
+    }
     ggplotly(plt, tooltip="text")
   })
   output$ecp_plot_site <- renderPlot({
@@ -1429,62 +1501,62 @@ shinyServer(function(input, output) {
   # SSDQA ISSUES -------
   # adjust available domain
 
-#   ssdqa_issues <- reactive({results_tbl('ssdqa_issues_ops_226', results_tag=FALSE)%>%collect()})
-#
-#   observeEvent(ssdqa_issues(), {
-#     choices_new <- ssdqa_issues()%>%
-#       mutate(domains_wd=str_remove(domains," \\(labs, anthro, vitals\\)|\\(care site, provider\\)|(history, fips)"))%>%
-#       separate_rows(domains_wd, sep=", ")%>%distinct(domains_wd)%>%pull()%>%sort()
-#
-#     choices_new<-c("All",choices_new)
-#     updateSelectInput(inputId="ssdqa_domain", choices=choices_new)
-#   })
-#
-#   output$ssdqa_issues_table<-DT::renderDT({
-#     if(config('mask_site')){return_tbl<-data.frame()}
-#     else if(input$ssdqa_domain=='All'){
-#       return_tbl<-ssdqa_issues()
-#     }else if("adt_occurrence"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"adt_occurrence"))
-#     }else if("condition_occurrence"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"condition_occurrence"))
-#     }else if("device_exposure"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"device_exposure"))
-#     }else if("drug_exposure"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"drug_exposure"))
-#     }else if("fact_relationship"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"fact_relationship"))
-#     }else if("hash_token"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"hash_token"))
-#     }else if("immunization"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"immunization"))
-#     }else if("location"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"location"))
-#     }else if("measurement"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"measurement"))
-#     }else if("observation"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"observation"))
-#     }else if("person"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"person"))
-#     }else if("procedure_occurrence"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"procedure_occurrence"))
-#     }else if("specialty"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"specialty"))
-#     }else if("visit_occurrence"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"visit_occurrence"))
-#     }else if("visit_payer"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"visit_payer"))
-#     }else if("other"%in%input$ssdqa_domain){
-#       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"other"))
-#     }
-#     if(!exists("return_tbl")){return_tbl<-NULL}
-#     DT::datatable(
-#       return_tbl,
-#       filter="top",
-#       options=list(pageLength=5),
-#       rownames=FALSE
-#     )
-# })
+  #   ssdqa_issues <- reactive({results_tbl('ssdqa_issues_ops_226', results_tag=FALSE)%>%collect()})
+  #
+  #   observeEvent(ssdqa_issues(), {
+  #     choices_new <- ssdqa_issues()%>%
+  #       mutate(domains_wd=str_remove(domains," \\(labs, anthro, vitals\\)|\\(care site, provider\\)|(history, fips)"))%>%
+  #       separate_rows(domains_wd, sep=", ")%>%distinct(domains_wd)%>%pull()%>%sort()
+  #
+  #     choices_new<-c("All",choices_new)
+  #     updateSelectInput(inputId="ssdqa_domain", choices=choices_new)
+  #   })
+  #
+  #   output$ssdqa_issues_table<-DT::renderDT({
+  #     if(config('mask_site')){return_tbl<-data.frame()}
+  #     else if(input$ssdqa_domain=='All'){
+  #       return_tbl<-ssdqa_issues()
+  #     }else if("adt_occurrence"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"adt_occurrence"))
+  #     }else if("condition_occurrence"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"condition_occurrence"))
+  #     }else if("device_exposure"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"device_exposure"))
+  #     }else if("drug_exposure"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"drug_exposure"))
+  #     }else if("fact_relationship"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"fact_relationship"))
+  #     }else if("hash_token"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"hash_token"))
+  #     }else if("immunization"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"immunization"))
+  #     }else if("location"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"location"))
+  #     }else if("measurement"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"measurement"))
+  #     }else if("observation"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"observation"))
+  #     }else if("person"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"person"))
+  #     }else if("procedure_occurrence"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"procedure_occurrence"))
+  #     }else if("specialty"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"specialty"))
+  #     }else if("visit_occurrence"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"visit_occurrence"))
+  #     }else if("visit_payer"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"visit_payer"))
+  #     }else if("other"%in%input$ssdqa_domain){
+  #       return_tbl<-ssdqa_issues()%>%filter(str_detect(domains,"other"))
+  #     }
+  #     if(!exists("return_tbl")){return_tbl<-NULL}
+  #     DT::datatable(
+  #       return_tbl,
+  #       filter="top",
+  #       options=list(pageLength=5),
+  #       rownames=FALSE
+  #     )
+  # })
 
 })
 

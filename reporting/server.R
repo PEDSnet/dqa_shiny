@@ -183,12 +183,19 @@ shinyServer(function(input, output) {
   # person facts/records -------
   ### capture data
   pf_output <- reactive({
+    if(input$largen_toggle==1){
     res('pf_output_pp')
+    }else{res('pf_output_ln')}
   })
   ### adjust available site name
   observeEvent(pf_output(), {
     choices_new<-c("total", unique(pf_output()$site)%>%sort())
     updateSelectInput(inputId = "sitename_pf", choices=choices_new)
+  })
+  ### adjust available site name for large n site comparison
+  observeEvent(pf_output(), {
+    choices_new<-unique((pf_output()%>%filter(site!='total'))$site)%>%sort()
+    updateSelectInput(inputId="sitename_pf_ln", choices=choices_new)
   })
 
   # best mapped concepts ----
@@ -206,8 +213,13 @@ shinyServer(function(input, output) {
     unite("top5", -c(site, check_desc), sep=", ", na.rm=TRUE)
 
   bmc_pp <- reactive({
+    if(input$largen_toggle==1){
     res('bmc_gen_output_pp')%>%
       left_join(top_rolled, by = c('site', 'check_desc'))
+    }else{
+      res('bmc_gen_output_ln')%>%
+        left_join(top_rolled, by = c('site', 'check_desc'))
+    }
   })
   bmc_pp_concepts <- reactive({
     res('bmc_gen_output_concepts_pp')
@@ -217,6 +229,11 @@ shinyServer(function(input, output) {
   observeEvent(bmc_pp(), {
     choices_new<-c("total", unique(bmc_pp()$site)%>%sort())
     updateSelectInput(inputId = "sitename_bmc", choices=choices_new)
+  })
+  ### adjust available site name for large n site comparison
+  observeEvent(bmc_pp(), {
+    choices_new<-unique((bmc_pp()%>%filter(site!='total'))$site)%>%sort()
+    updateSelectInput(inputId="sitename_bmc_ln", choices=choices_new)
   })
   # find the top 5 per check/site
   bmc_pp_top <- reactive({
@@ -660,8 +677,7 @@ shinyServer(function(input, output) {
         text=paste0("site: ",site,
                     "\ndomain: ",domain,
                     "\nproportion change: ",prop_total_change,
-                    "\noverall median: ", median_val,
-                    "\n(Q1, Q3) : (", q1, ", ", q3, ")")),
+                    "\noverall median (Q1, Q3): ", median_val, " (", q1, ", ", q3, ")")),
         aes(x=domain, text=text)
       )+
         geom_bar(aes(y=prop_total_change, fill=site), stat="identity")+
@@ -951,7 +967,7 @@ shinyServer(function(input, output) {
     )
   )
   output$pf_overall_bysite_plot <- renderPlot({
-    if(input$sitename_pf=="total"){
+    if(input$sitename_pf=="total"&input$largen_toggle==1){
       outplot <- ggplot()+
         geom_blank()+
         annotate("text", label="Select a site", x=0,y=0)+
@@ -965,7 +981,9 @@ shinyServer(function(input, output) {
              y="")
     }
     else{
-      outplot <- ggplot(filter(pf_output(),site==input$sitename_pf),
+      if(input$largen_toggle==1){plotdat<-filter(pf_output(),site==input$sitename_pf)
+      }else{plotdat<-filter(pf_output(),site==input$sitename_pf_ln)}
+      outplot <- ggplot(plotdat,
                         aes(x=check_desc_neat, y = fact_visits_prop, label=fact_visits_prop, fill=site)) +
         geom_bar(stat='identity')+
         geom_label(fill="white")+
@@ -983,9 +1001,10 @@ shinyServer(function(input, output) {
     }
     return(outplot)
   })
-  ### heatmap
+  ### heatmap (individual sites) or bar plot (large n)
   output$pf_overall_heat_plot <- renderPlotly({
     if(input$sitename_pf=="total"){
+      if(input$largen_toggle==1){
       outplot <- ggplot(pf_output()%>%
                           mutate(text=paste0("site: ",site,
                                              "\ncheck: ",check_desc_neat,
@@ -999,6 +1018,23 @@ shinyServer(function(input, output) {
              fill="Proportion Patients\nwith Fact")+
         facet_wrap(~visit_type, scales = "free_x")+
         scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
+      }else{
+        outplot<-ggplot(pf_output()%>%filter(site==input$sitename_pf_ln)%>%
+                          mutate(text=paste0("\nprop. patients: ",fact_pts_prop,
+                                             "\nprop. visits: ",fact_visits_prop,
+                                             "\nprop. patients median (Q1, Q3): ", round(median_val_pts,2), " (",round(q1_pts,2), ", ", round(q3_pts,2), ")",
+                                             "\nprop. visits median (Q1, Q3): ", round(median_val_visits,2), " (",round(q1_visits,2), ", ", round(q3_visits,2), ")")),
+                        aes(x=check_desc_neat, fill=site, text=text))+
+          geom_bar(aes(y=fact_pts_prop), stat="identity")+
+          geom_linerange(aes(ymin=q1_pts, ymax=q3_pts))+
+          geom_point(aes(x=check_desc_neat,y=median_val_pts), shape=23, size=1)+
+          scale_fill_manual(values=site_colors)+
+          facet_wrap(~visit_type)+
+          theme_bw()+
+          coord_flip()+
+          labs(x="Fact Type",y="Proportion Patients with Fact")+
+          theme(legend.position="none")
+      }
     }
     else{
       outplot <- ggplot(filter(pf_output(),site==input$sitename_pf)%>%
@@ -1020,6 +1056,8 @@ shinyServer(function(input, output) {
   # BEST MAPPED CONCEPTS --------
   output$bmc_overall_plot <- renderPlotly({
     if(input$sitename_bmc=="total"){
+      # individual sites, overall
+      if(input$largen_toggle==1){
       outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'),
                          aes(x=site, y=best_row_prop, fill=site,
                              text=round(best_row_prop,2)))+
@@ -1031,6 +1069,22 @@ shinyServer(function(input, output) {
         coord_flip()+
         theme_bw()+
         theme(legend.position="none")
+      }else{
+        # large n, overall
+        outplot <- ggplot(filter(bmc_pp(),include_new==1L&site==input$sitename_bmc_ln)%>%
+                            mutate(text=paste("Proportion best mapped: ",round(best_row_prop,2),
+                                              "\nOverall median (Q1, Q3): ",round(median_val,2), " (",round(q1,2),", ",round(q3,2), ")")),
+                          aes(x=check_desc,fill=site,text=text))+
+          geom_bar(aes(y=best_row_prop), stat="identity")+
+          geom_linerange(aes(ymin=q1, ymax=q3))+
+          geom_point(aes(y=median_val), shape=23, size=1)+
+          scale_fill_manual(values=site_colors)+
+          theme_bw()+
+          theme(legend.position = "none")+
+          labs(x="Check Application",
+               y="Proportion Best Mapped")+
+          coord_flip()
+      }
     }
     else{
       outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc)%>%

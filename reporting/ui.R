@@ -167,7 +167,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  sidebarPanel(
                                    selectInput(inputId = "sitename_pf",
                                                label = "Institution",
-                                               choices = NULL)),
+                                               choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_pf == 'total'",
+                                     selectInput(inputId="sitename_pf_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   )),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
@@ -189,7 +196,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  sidebarPanel(
                                    selectInput(inputId = "sitename_bmc",
                                                label = "Institution",
-                                               choices = NULL)),
+                                               choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_bmc == 'total'",
+                                     selectInput(inputId="sitename_bmc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   )),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(

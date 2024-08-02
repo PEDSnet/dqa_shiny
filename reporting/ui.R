@@ -89,7 +89,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  sidebarPanel(
                                  selectInput(inputId = "sitename_vs_conf",
                                              label = "Institution",
-                                             choices = NULL)),
+                                             choices = NULL),
+                                 # only show comparison option for overall metrics
+                                 conditionalPanel(
+                                   condition="input.largen_toggle == 2 && input.sitename_vs_conf == 'total'",
+                                   selectInput(inputId="sitename_vs_ln",
+                                               label="Comparison Site",
+                                               choices=NULL)
+                                 )),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(

@@ -108,9 +108,17 @@ shinyServer(function(input, output) {
 
   # vocabulary and valueset conformance ------------
   ### pp data
-  vc_vs_output <- reactive({
-    res('vc_vs_output_pp') %>%
+  vc_output <- reactive({
+    if(input$largen_toggle==1){
+    res('vc_vs_output_pp') %>% filter(check_type=='vc')%>%
       mutate(prop_viol=round(tot_prop,2))
+    }else{res('vc_vs_output_ln')%>%filter(check_type=='vc')}
+  })
+  vs_output <- reactive({
+    if(input$largen_toggle==1){
+      res('vc_vs_output_pp') %>% filter(check_type=='vs')%>%
+        mutate(prop_viol=round(tot_prop,2))
+    }else{res('vc_vs_output_ln') %>%filter(check_type=='vs')}
   })
 
   vc_vs_violations <- reactive({
@@ -118,14 +126,24 @@ shinyServer(function(input, output) {
       mutate(prop_viol=round(tot_prop,2))
   })
   ### adjust available site name
-  observeEvent(vc_vs_violations(), {
-    sites_w_viol<-vc_vs_violations()%>%filter(check_type=='vs')
+  observeEvent(vs_output(), {
+    sites_w_viol<-vs_output()%>%filter(!accepted_value)
     choices_new<-c("total", unique(sites_w_viol$site)%>%sort())
     updateSelectInput(inputId = "sitename_vs_conf", choices=choices_new)
   })
   observeEvent(vc_vs_violations(), {
     choices_new<-c("total", unique(vc_vs_violations()$site)%>%sort())
     updateSelectInput(inputId = "sitename_vc_conf", choices=choices_new)
+  })
+  ### adjust available site name for large n comparison for vs
+  observeEvent(vs_output(), {
+    choices_new<-unique((vs_output()%>%filter(site!='total'&!accepted_value))$site)%>%sort()
+    updateSelectInput(inputId="sitename_vs_ln", choices=choices_new)
+  })
+  ### adjust available site name for large n comparison for vc
+  observeEvent(vc_output(), {
+    choices_new<-unique((vs_output()%>%filter(site!='total'&!accepted_value))$site)%>%sort()
+    updateSelectInput(inputId="sitename_vc_ln", choices=choices_new)
   })
 
   ### acceptable vocabularies for vc
@@ -707,7 +725,8 @@ shinyServer(function(input, output) {
   # VALUE SET CONFORMANCE ------
   output$vs_plot <- renderPlot({
     if(input$sitename_vs_conf=='total'){
-      outplot<-ggplot(filter(vc_vs_output(),check_type=='vs'),
+      if(input$largen_toggle==1){
+      outplot<-ggplot(filter(vs_output(),!accepted_value),
                       aes(x=site, y=tot_prop, fill=vocabulary_id))+
         geom_bar(stat="identity",position="dodge")+
         scale_fill_pedsn_dq()+
@@ -716,10 +735,20 @@ shinyServer(function(input, output) {
         theme_bw()+
         labs(y="Proportion of Total Records",
              title="Violating Records per Column")
+      }else{
+        outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_ln),
+                        aes(x=measurement_column))+
+          geom_bar(aes(y=prop_viol), stat="identity")+
+          geom_point(aes(y=median_val))+
+          geom_linerange(aes(ymin=q1,ymax=q3))+
+          facet_wrap(~table_application, scales="free")+
+          theme_bw()+
+          coord_flip()
+      }
 
     }
-    else if(nrow(filter(vc_vs_output(), check_type=='vs'&site==input$sitename_vs_conf))>0){
-      outplot<-ggplot(filter(vc_vs_output(), check_type=='vs'&site==input$sitename_vs_conf), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
+    else if(nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
+      outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
         geom_bar(stat="identity", position="dodge") +
         geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
                    position=position_dodge(),
@@ -747,13 +776,13 @@ shinyServer(function(input, output) {
   })
   output$vs_table <- DT::renderDT({
     if(input$sitename_vs_conf=='total'){
-      outtable <-filter(vc_vs_output(), check_type=='vs')%>%
+      outtable <-filter(vs_output(), !accepted_value)%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
                total_rows=format(total_denom_ct, big.mark=','))%>%
         select(site, table_application, vocabulary_id, total_violations, total_rows)
     }
-    else if(nrow(filter(vc_vs_output(), check_type=='vs'&site==input$sitename_vs_conf))!=0){
-      outtable <-filter(vc_vs_output(), check_type=='vs'&site==input$sitename_vs_conf)%>%
+    else if(nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))!=0){
+      outtable <-filter(vs_output(), site==input$sitename_vs_conf)%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
                total_rows=format(total_denom_ct, big.mark=','))%>%
         select(table_application, vocabulary_id, total_violations, total_rows)
@@ -774,7 +803,7 @@ shinyServer(function(input, output) {
   # VOCABULARY CONFORMANCE -----
   output$vc_overall_plot <- renderPlotly({
     if(input$sitename_vc_conf=='total'){
-      plt<-ggplot(filter(vc_vs_output(), check_type=='vc')%>%
+      plt<-ggplot(vc_output()%>%
                     mutate(text=paste0("site: ",site,
                                        "\nvocabulary: ",vocabulary_id,
                                        "\nproportion: ",prop_viol)),
@@ -785,7 +814,7 @@ shinyServer(function(input, output) {
         theme_bw()+
         theme(axis.text.x = element_text(angle=90))
     }else{
-      plt<-ggplot(filter(vc_vs_output(), check_type=='vc'&site==input$sitename_vc_conf)%>%
+      plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                     mutate(text=paste0("site: ",site,
                                        "\nvocabulary: ",vocabulary_id,
                                        "\nproportion: ",prop_viol)),
@@ -803,7 +832,7 @@ shinyServer(function(input, output) {
 
   output$vc_plot <- renderPlotly({
     if(input$sitename_vc_conf=='total'){
-      outplot<-ggplot(filter(vc_vs_output(),check_type=='vc'&!accepted_value)%>%
+      outplot<-ggplot(filter(vc_output(),!accepted_value)%>%
                         mutate(text=paste0("vocabulary: ",vocabulary_id,
                                            "\nproportion: ",prop_viol)),
                       aes(x=site,y=tot_prop,fill=vocabulary_id, text=text))+
@@ -813,8 +842,8 @@ shinyServer(function(input, output) {
         scale_fill_pedsn_dq()+
         theme(axis.text.x = element_text(angle=90))+
         facet_wrap(~measurement_column)
-    }else if(nrow(filter(vc_vs_output(), check_type=='vc'&site==input$sitename_vc_conf&!accepted_value))>0){
-      outplot<-ggplot(filter(vc_vs_output(), check_type=='vc'&site==input$sitename_vc_conf&!accepted_value)%>%
+    }else if(nrow(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value))>0){
+      outplot<-ggplot(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value)%>%
                         mutate(text=paste0("vocabulary: ",vocabulary_id,
                                            "\nproportion: ",prop_viol)), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id, text=text)) +
         geom_bar(stat="identity", position="dodge") +
@@ -846,12 +875,12 @@ shinyServer(function(input, output) {
   })
   output$vc_table <- DT::renderDT({
     if(input$sitename_vc_conf=='total'){
-      outtable <-filter(vc_vs_output(), check_type=='vc'&!accepted_value)%>%
+      outtable <-filter(vc_output(), !accepted_value)%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
                total_rows=format(total_denom_ct, big.mark=','))%>%
         select(site, table_application, vocabulary_id, total_violations, total_rows)
-    }else if(nrow(filter(vc_vs_output(), check_type=='vc'&site==input$sitename_vc_conf&!accepted_value))!=0){
-      outtable <-filter(vc_vs_output(), check_type=='vc'&site==input$sitename_vc_conf&!accepted_value)%>%
+    }else if(nrow(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value))!=0){
+      outtable <-filter(vc_output(), site==input$sitename_vc_conf&!accepted_value)%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
                total_rows=format(total_denom_ct, big.mark=','))%>%
         select(table_application, vocabulary_id, total_violations, total_rows)

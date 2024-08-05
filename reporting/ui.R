@@ -111,7 +111,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  sidebarPanel(
                                    selectInput(inputId="sitename_vc_conf",
                                                label="Institution",
-                                               choices=NULL)),
+                                               choices=NULL),
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_vc_conf == 'total'",
+                                     selectInput(inputId="sitename_vc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   )),
                                  mainPanel(
                                      fluidRow(p("Note: Proportions are of the total rows in the table. Proportions that do not add up to 1 for the given column indicate missing values."),
                                               box(title="Overall Vocabularies",

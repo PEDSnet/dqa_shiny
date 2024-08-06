@@ -167,8 +167,13 @@ shinyServer(function(input, output) {
     }
   })
   uc_yr_output <- reactive({
+    if(input$largen_toggle==1){
     res('uc_by_year_pp') %>%
       mutate(year_date=as.integer(year_date))
+    }else{
+      res('uc_by_year_ln')%>%
+        mutate(year_date=as.integer(year_date))
+    }
   })
   uc_top_output <- reactive({
     results_tbl('uc_grpd_pp') %>% collect()%>%
@@ -972,6 +977,7 @@ shinyServer(function(input, output) {
   })
   output$uc_yr_plot <- renderPlot({
     if(input$sitename_uc=="total"){
+      if(input$largen_toggle==1){
       outplot <- ggplot(filter(uc_yr_output(), year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]),
                         aes(x = year_date, y = prop_total, colour=site)) +
         geom_point()+
@@ -984,7 +990,26 @@ shinyServer(function(input, output) {
               axis.text.y = element_text(size=12),
               axis.title=element_text(size=18))+
         scale_color_manual(values=site_colors)+
-        scale_x_continuous(breaks = pretty_breaks())
+        scale_x_continuous(breaks = pretty_breaks())+
+        theme(legend.position = "none")
+      }else{
+       outplot <- ggplot(filter(uc_yr_output(), site==input$sitename_uc_ln,
+                                  year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]),
+                                    aes(x = year_date)) +
+          geom_ribbon(aes(ymin=q1,ymax=q3),fill="grey70")+
+         geom_line(aes(y=median_val), linetype="dotted")+
+          geom_line(aes(y=prop_total, colour=site),linewidth=2)+
+          facet_wrap(~unmapped_description, scales="free") +
+          labs(x = "Year",
+               y = "Proportion Unmapped")+
+          theme_bw()+
+          theme(axis.text.x = element_text(size=12),
+                axis.text.y = element_text(size=12),
+                axis.title=element_text(size=18))+
+          scale_color_manual(values=site_colors)+
+          scale_x_continuous(breaks = pretty_breaks())+
+         theme(legend.position = "none")
+      }
     }
     else{
       outplot <- ggplot(filter(uc_yr_output(),site==input$sitename_uc, year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]), aes(x = year_date, y = prop_total, color=site)) +

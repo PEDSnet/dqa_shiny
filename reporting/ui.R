@@ -19,17 +19,17 @@ source('../site/run.R')
 shinyUI(fluidPage(tags$head(
   tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
 ),
-title = "RECOVER DQA Dashboard",
+title = "PEDSnet DQA Dashboard",
 
 # Application Title
-navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
+navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                           style = "padding-top:0px; padding-bottom:4px;"),
-                                      "RECOVER DQA Dashboard",
+                                      "PEDSnet DQA Dashboard",
                                       style = "font-family: Trebuchet MS; color: white; font-size: 200%")),
            tabPanel(title="Home", icon=icon("home"),
                     sidebarLayout(
                       sidebarPanel(
-                        tags$h4("Welcome to the RECOVER Data Quality Dashboard!"),
+                        tags$h4("Welcome to the PEDSnet Data Quality Dashboard!"),
                         tags$h6("Report Refresh Date:", Sys.Date()),
                         tags$h6("Current Database Version:", config('db_current')),
                         radioButtons(inputId="largen_toggle",
@@ -41,9 +41,9 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                         tags$p("Contact pedsnetdcc@chop.edu for more information")
                       ),
                       mainPanel(
-                        tags$p("The RECOVER Data Quality Dashboard (RDQD) provides output from the data quality program developed and maintained
-                                                 by the RECOVER Data Quality team."),
-                        tags$p("The RDQD is displayed by check type. A check type is a category of checks that can be
+                        tags$p("The PEDSnet Data Quality Dashboard (PQD) provides output from the data quality program developed and maintained
+                                                 by the PEDSnet Data Quality team."),
+                        tags$p("The PQD is displayed by check type. A check type is a category of checks that can be
                                                  executed across a wide variety of fields, domains, tables, or other applications.
                                                  Below are descriptions of each check type."),
                         DT::dataTableOutput("dt_descriptions")

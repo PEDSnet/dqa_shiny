@@ -142,7 +142,7 @@ config('mask_site', TRUE)
 #' table name length.
 #' @md
 config('results_name_tag',
-       '_pasc_109')
+      NA)
 config('local_name_tag', '_loc')
 
 #' Execution mode

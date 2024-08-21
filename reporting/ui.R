@@ -11,6 +11,7 @@ library(shiny)
 library(markdown)
 library(shinydashboard)
 library(plotly)
+library(gt)
 source('../site/run.R')
 
 
@@ -31,6 +32,12 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                         tags$h4("Welcome to the RECOVER Data Quality Dashboard!"),
                         tags$h6("Report Refresh Date:", Sys.Date()),
                         tags$h6("Current Database Version:", config('db_current')),
+                        radioButtons(inputId="largen_toggle",
+                                     label="Display Type",
+                                     choices=list('Individual Sites'=1,
+                                               'Summary Metrics'=2),
+                                     selected=1),
+                        tags$p("Selecting Individual Sites will display the default dashboard, where each site is displayed individually and against each other site. Selecting Summary Metrics will modify the visualizations to compare each site against overall metrics across the other sites. This option is helpful to de-clutter if there are a large number of sites."),
                         tags$p("Contact pedsnetdcc@chop.edu for more information")
                       ),
                       mainPanel(
@@ -48,9 +55,16 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                    selectInput(inputId="sitename_dc",
                                                label="Institution",
                                                choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_dc == 'total'",
+                                     selectInput(inputId="sitename_dc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   ),
                                    selectInput(inputId = "dc_domain",
                                                label="Domain",
-                                               choices = c('adt')), # set a default to avoid empty string detection),
+                                               choices = c('adt')), # set a default to avoid empty string detection
                                    checkboxGroupInput(inputId="dc_subdomain",
                                                       label="Specific Check",
                                                       choices=NULL)),
@@ -59,7 +73,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                    fluidRow(
                                      # DC changes - site comparison
                                      box(title="Overall Data Cycle Changes",
-                                         plotOutput("dc_overall", height=500, width=1000)),
+                                         plotlyOutput("dc_overall", height=500, width=1000)),
                                      box(title="Domain-Specific Data Cycle Changes (Records)",width=12,
                                          plotOutput("dc_domain_split")),
                                      box(title="Domain-Specific Data Cycle Changes (Persons)",width=12,
@@ -70,27 +84,54 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                  )#mainPanel
                                )#sidebarlayout
                       ),#tabpanel for changes between data cycles
-                      tabPanel("Conformance",
+                      tabPanel("Valueset Conformance",
                                sidebarLayout(
                                  sidebarPanel(
-                                 selectInput(inputId = "sitename_conf",
+                                 selectInput(inputId = "sitename_vs_conf",
                                              label = "Institution",
-                                             choices = NULL)),
+                                             choices = NULL),
+                                 # only show comparison option for overall metrics
+                                 conditionalPanel(
+                                   condition="input.largen_toggle == 2 && input.sitename_vs_conf == 'total'",
+                                   selectInput(inputId="sitename_vs_ln",
+                                               label="Comparison Site",
+                                               choices=NULL)
+                                 )),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
-                                     # Valueset conformance
-                                     box(title="Valueset Conformance", width=12,
-                                         plotOutput("vs_plot")),
-                                     box(title="Valueset Violations", width=12,
-                                         p("Violations per table and vocabulary"),
-                                         DT::dataTableOutput("vs_table")),
-                                     # Vocabulary conformance
-                                     box(title="Vocabulary Conformance", width=12,
-                                         plotOutput("vc_plot")),
-                                     box(title="Vocabulary Violations", width=12,
-                                         p("Violations per table and vocabulary"),
-                                         DT::dataTableOutput("vc_table")),
+                                     p("Note that sites only show up if there is at least one violation"),
+                                     box(title="Valueset Violations Plot", width=12, plotOutput("vs_plot")),
+                                     box(title="Violations Listings", width=12, DT::dataTableOutput("vs_table"))
+                                     )
+                                 )
+                               )),
+                      tabPanel("Vocabulary Conformance",
+                               sidebarLayout(
+                                 sidebarPanel(
+                                   selectInput(inputId="sitename_vc_conf",
+                                               label="Institution",
+                                               choices=NULL),
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_vc_conf == 'total'",
+                                     selectInput(inputId="sitename_vc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   )),
+                                 mainPanel(
+                                     fluidRow(p("Note: Proportions are of the total rows in the table. Proportions that do not add up to 1 for the given column indicate missing values."),
+                                              box(title="Overall Vocabularies",
+                                                  plotlyOutput("vc_overall_plot", height=500, width=1000))),
+                                     fluidRow(
+                                       column(
+                                         width=12,
+                                         align='left',
+                                              tabBox(width='100%',
+                                                tabPanel("Vocabulary Conformance Violations Plot", plotlyOutput("vc_plot")),
+                                            tabPanel("Violations Listings", DT::dataTableOutput("vc_table")),
+                                            tabPanel("Acceptable Vocabularies",
+                                                     DT::dataTableOutput("vc_vocabs")))
+                                       )#column
                                    )#fluidrow
                                  )#mainpanel
                                )#sidebarlayout
@@ -101,6 +142,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                    selectInput(inputId = "sitename_uc",
                                                label = "Institution",
                                                choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_uc == 'total'",
+                                     selectInput(inputId="sitename_uc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   ),
                                    sliderInput("date_uc_range",
                                                label="Date Range",
                                                min=1990L,
@@ -112,15 +160,17 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
+                                     h2("Unmapped Concepts Overall"),
                                      # Unmapped Concepts Proportions
-                                     box(title="Unmapped Concepts Overall", width=12,
-                                         plotOutput("uc_overall_plot")),
-                                     box(title="Unmapped Concepts by Year", width=12,
-                                         plotOutput("uc_yr_plot", height=750)),
-                                     box(title="Top Unmapped Concepts", width=12,
-                                         p("Top 10 unmapped concepts per table application"),
-                                         DT::dataTableOutput("uc_top_tbl", height=600))
-                                   )#fluidrow
+                                     tabBox(
+                                       tabPanel("Unmapped Concepts Plot",
+                                            plotOutput("uc_overall_plot",height=600,width=1000)),
+                                       tabPanel("Top Unmapped Source Values",
+                                                h6("Top 10 unmapped source values per column per site"),
+                                                p("proportion_of_unmapped is the count of the given source value divided by the number of unmapped rows for that column. Not displayed for Summary Metrics total"),
+                                                DT::dataTableOutput("uc_top_tbl", width=1000)))),
+                                    fluidRow(box(title="Unmapped Concepts by Year", width=12,
+                                         plotOutput("uc_yr_plot", height=600)))
                                  )#mainpanel
 
                                )#sidebarlayout
@@ -130,7 +180,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                  sidebarPanel(
                                    selectInput(inputId = "sitename_pf",
                                                label = "Institution",
-                                               choices = NULL)),
+                                               choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_pf == 'total'",
+                                     selectInput(inputId="sitename_pf_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   )),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
@@ -152,7 +209,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                  sidebarPanel(
                                    selectInput(inputId = "sitename_bmc",
                                                label = "Institution",
-                                               choices = NULL)),
+                                               choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_bmc == 'total'",
+                                     selectInput(inputId="sitename_bmc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   )),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
@@ -183,29 +247,34 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                    selectInput(inputId = "fot_domain",
                                                label="Choose Domain for Summary and Site-Specific Plots",
                                                choices = NULL),
+                                   wellPanel(
+                                     strong(helpText("Summary Plot")),
                                    selectInput(inputId='fot_subdomain_overall',
                                                label='Summary Plots: Specific Check',
-                                               choices=NULL),
-                                   checkboxGroupInput(inputId="fot_subdomain_site",
-                                                      label="Site Specific Plots: Specific Check",
-                                                      choices=NULL),
+                                               choices=NULL)),
+                                   wellPanel(
+                                     strong(helpText("Site Specific")),
                                    selectInput(inputId = "sitename_fot",
                                                label = "Select Site",
                                                choices =NULL),
+                                   checkboxGroupInput(inputId="fot_subdomain_site",
+                                                      label="Site Specific Plots: Specific Check",
+                                                      choices=NULL),
                                    selectInput(inputId="fot_bounds",
                                                label="SD Bounds Option",
                                                choices=c('No Bounds',
                                                          1,
                                                          2,
-                                                         3))),
+                                                         3)))),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
                                      #summary
-                                     box(title="Summary Plots",width=12,
-                                         plotOutput("fot_summary_plot")),
+                                     box(title="Summary Plot",width=12,
+                                         plotlyOutput("fot_summary_plot")),
                                      box(title="Site Specific Facts Over Time",width=12,
-                                         plotOutput("fot_plot"))
+                                         #plotlyOutput("fot_plot"))
+                                         uiOutput("fot_plot"))
                                    )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout
@@ -216,13 +285,20 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                    selectInput(inputId = "sitename_dcon",
                                                label = "Select Site",
                                                choices = NULL),
-                                   sliderInput("date_dcon_range",
-                                               label="Date Range",
-                                               min=1990L,
-                                               max=as.integer(format(Sys.Date(), "%Y")),
-                                               value=c(2010L,2022L),
-                                               step=1L,
-                                               sep=""),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_dcon == 'total'",
+                                     selectInput(inputId="sitename_dcon_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   ),
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 1 || input.sitename_dcon != 'total'",
+                                     selectInput(inputId = "denom_dcon",
+                                               label = "Select Denominator",
+                                               choices = c("Overall",
+                                                           "Cohort 1",
+                                                           "Cohort 2"))),
                                    checkboxGroupInput(inputId="dcon_check",
                                                       label="Specific Check",
                                                       choices=NULL)),
@@ -234,9 +310,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                          DT::dataTableOutput("dcon_cohort_descr")),
                                      #plots
                                      box(title="Domain Concordance Overall",width=12,
-                                         plotOutput("dcon_overall_plot"))
-                                     # box(title="Domain Concordance over Time",width=12,
-                                     #     plotOutput("dcon_time_plot"))
+                                         plotlyOutput("dcon_overall_plot"))
                                      )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout
@@ -260,8 +334,37 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=35,width=150,
                                    )#fluidRow
                                  )#mainPanel
                                )#sidebarlayout
-                      )#tabpanel for mf
-           )#navbarmenu
+                      ),
+                      tabPanel("Expected Concepts Present",
+                               sidebarLayout(
+                                 sidebarPanel(
+                                   selectInput(inputId="sitename_ecp",
+                                               label="PEDSnet Institution",
+                                               choices = NULL)),
+                                 # Begin main
+                                 mainPanel(
+                                   fluidRow(
+                                     box(title="Overall Expected Concepts Present",
+                                         width=12,
+                                         plotlyOutput("ecp_plot")),
+                                     box(title="Site-Specific Expected Concepts Present",
+                                         width=12,
+                                         plotOutput("ecp_plot_site"))
+                                   )#fluidRow
+                                 )#mainPanel
+                               )#sidebarpanel
+                      )#tabpanel for ecp
+           )#,#navbarmenu
+           # tabPanel(title="SSDQA Issues", icon=icon("square-check"),
+           #          sidebarLayout(
+           #            sidebarPanel(
+           #              selectInput(inputId = "ssdqa_domain",
+           #                          label = "Select Domain",
+           #                          choices = NULL)
+           #            ),
+           #            mainPanel(
+           #              DT::DTOutput("ssdqa_issues_table")
+           #            )))
 )#navbarpage
 )#fluidpage
 )#shinyUI

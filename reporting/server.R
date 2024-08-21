@@ -251,17 +251,18 @@ shinyServer(function(input, output) {
   bmc_pp_concepts <- reactive({
     res('bmc_gen_output_concepts_pp')
   })
-
   # adjust available site name
   observeEvent(bmc_pp(), {
     choices_new<-c("total", unique(bmc_pp()$site)%>%sort())
     updateSelectInput(inputId = "sitename_bmc", choices=choices_new)
   })
+
   ### adjust available site name for large n site comparison
   observeEvent(bmc_pp(), {
     choices_new<-unique((bmc_pp()%>%filter(site!='total'))$site)%>%sort()
     updateSelectInput(inputId="sitename_bmc_ln", choices=choices_new)
   })
+
   # find the top 5 per check/site
   bmc_pp_top <- reactive({
     bmc_pp_concepts()%>%
@@ -272,14 +273,17 @@ shinyServer(function(input, output) {
       select(check_desc, concept, row_proportions)
   })
 
+
   # pull in the listing of concepts that are considered best/notbest
   bmc_conceptset <- results_tbl('bmc_conceptset')%>%filter(!is.na(include))%>%collect()
   # set up the BMC tables that will be displayed
   output$bmc_conceptset_best<-DT::renderDT({
+
     bmc_conceptset%>%
       filter(include==1)%>%
       select(check_desc, concept)
   })
+
   output$bmc_conceptset_notbest<-DT::renderDT({
     bmc_conceptset%>%
       filter(include==0)%>%
@@ -290,7 +294,6 @@ shinyServer(function(input, output) {
     bmc_pp_top()%>%
       mutate(row_proportions=round(row_proportions,2))
   })
-
 
   # facts over time ------
   # capture data
@@ -379,6 +382,12 @@ shinyServer(function(input, output) {
     choices_new<-unique(dcon_output()$check_name)
     updateCheckboxGroupInput(inputId="dcon_check", choices=choices_new)
   })
+  
+  # dcon_output_byyr <- reactive({
+  #   results_tbl(name='dcon_output_pp_byyr')%>%collect()%>%
+  #     mutate(site=case_when(config('mask_site')~site_anon,
+  #                           TRUE~site))
+  # })
   dcon_meta <- reactive({
     results_tbl('dcon_meta')%>%
       collect()%>%
@@ -1188,7 +1197,6 @@ shinyServer(function(input, output) {
     }
     return(ggplotly(outplot,tooltip="text"))
   })
-
   # FACTS OVER TIME -----
   ### overall plot
   output$fot_summary_plot <- renderPlotly({

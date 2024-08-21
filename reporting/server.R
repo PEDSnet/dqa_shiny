@@ -11,19 +11,31 @@ library(RColorBrewer)
 library(forcats)
 
 #' Function for replacing site names with masked identifiers
-#' if mask_site is set to TRUE in run.R
+reid<-function(tbl){
+  distinct_sites <- tbl %>%
+    distinct(site)
+
+  # create map of site name to masked identifier
+  site_nums <- distinct_sites[sample(1:nrow(distinct_sites)),]%>%
+    mutate(sitenum=row_number(),
+           site_newid=paste0("site ", sitenum))
+
+  rslt <- tbl %>%
+    inner_join(site_nums, by = 'site')%>%
+    select(-site)%>%
+    mutate(site = case_when(str_detect(site_newid, '[0-9]') ~
+                              paste0(str_extract(site_newid, '^[^0-9]+'),
+                                     sprintf('%02d',
+                                             as.integer(str_extract(site_newid,
+                                                                    '[0-9]+')))),
+                            TRUE ~ site_newid))
+}
 res <- function(tbl_name) {
+
   rslt <- results_tbl(tbl_name) %>% collect()
-  if (config('mask_site')) {
-    rslt <- mutate(rslt, site =
-                     case_when(str_detect(site_anon, '[0-9]') ~
-                                 paste0(str_extract(site_anon, '^[^0-9]+'),
-                                        sprintf('%02d',
-                                                as.integer(str_extract(site_anon,
-                                                                       '[0-9]+')))),
-                               TRUE ~ site_anon))
-  }
-  rslt
+
+  reid(rslt)
+
 }
 
 #' Function for plotting site-specific FOT plots
@@ -321,25 +333,29 @@ shinyServer(function(input, output) {
 
   # limit table to domain selected for specific check choices
 
-  fot_output <- reactive({res('fot_heuristic_pp') %>%
-      inner_join(res('fot_heuristic_summary_pp'),
-                 by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>%
-      inner_join(select(res('fot_output_mnth_ratio_pp'),
+  fot_output <- reactive({
+    r<-results_tbl('fot_heuristic_pp') %>%
+      inner_join(results_tbl('fot_heuristic_summary_pp'),
+                 by=c('domain','check_name', 'site')) %>%
+      inner_join(select(results_tbl('fot_output_mnth_ratio_pp'),
                         c(row_cts, check_name, domain, site, month_end)),
                  by = c('check_name', 'domain', 'site', 'month_end'))%>%
       collect() %>%
       filter(domain==input$fot_domain)
+    reid(r)
   })
-  fot_output_site <- reactive({res('fot_heuristic_pp') %>%
-      inner_join(res('fot_heuristic_summary_pp'),
+  fot_output_site <- reactive({
+    r<-results_tbl('fot_heuristic_pp') %>%
+      inner_join(results_tbl('fot_heuristic_summary_pp'),
                  by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>%
-      inner_join(select(res('fot_output_mnth_ratio_pp'),
+      inner_join(select(results_tbl('fot_output_mnth_ratio_pp'),
                         c(row_cts, check_name, domain, site, month_end)),
                  by = c('check_name', 'domain', 'site', 'month_end'))%>%
       collect() %>%
       filter(domain==input$fot_domain,
              site==input$sitename_fot,
              check_desc%in%input$fot_subdomain_site)
+    reid(r)
   })
 
   # adjust available site name

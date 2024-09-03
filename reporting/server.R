@@ -73,7 +73,7 @@ plot_fot_fn <- function(data) {
 
 shinyServer(function(input, output) {
   # DATA CAPTURE -------
-  ## data cycle changes
+  ## data cycle changes -------
   ### pp data
   dc_output_all <- reactive({
     if(input$largen_toggle==1){
@@ -573,14 +573,11 @@ shinyServer(function(input, output) {
       }
       # individual sites OR summary metrics (same plot)
       else{
-        tc_prev<-paste0('total_ct_',config('db_previous'))
-        tc_new<-paste0('total_ct_',config('db_current'))
         showplot<- ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
                                    site==input$sitename_dc&
                                    application=='rows'), aes(x=site,y=prop_total_change))+
-          geom_segment(aes(x=site,xend=site,y=0,yend=prop_total_change))+
-          geom_label(aes(x=site, y=0, label=paste0("Previous Record Count: ",format(!!sym(tc_prev), big.mark = ",",scientific = FALSE))))+
-          geom_label(aes(x=site, y=prop_total_change, label=paste0("New Record Count: ",format(!!sym(tc_new), big.mark = ",",scientific = FALSE))))+
+          geom_bar(aes(x=site,y=prop_total_change,fill=site), stat="identity")+
+          scale_fill_manual(values=site_colors)+
           labs(x="Site",
                y="Records Proportion Change")+
           facet_wrap(~domain)+
@@ -679,16 +676,11 @@ shinyServer(function(input, output) {
           labs(x="",
                y="")
       }else{
-        tc_prev<-paste0('total_ct_',config('db_previous'))
-        tc_new<-paste0('total_ct_',config('db_current'))
-        # pc_prev<-paste0('total_pt_ct_', config('db_previous'))
-        #pc_new<-paste0('total_pt_ct_',config('db_current'))
         showplot<- ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
                                    site==input$sitename_dc&application=='person'),
                           aes(x=site,y=prop_total_change))+
-          geom_segment(aes(x=site,xend=site,y=0,yend=prop_total_change))+
-          geom_label(aes(x=site, y=0, label=paste0("Previous Person Count: ",format(!!sym(tc_prev), big.mark = ",",scientific = FALSE))))+
-          geom_label(aes(x=site, y=prop_total_change, label=paste0("New Person Count: ",format(!!sym(tc_new), big.mark = ",",scientific = FALSE))))+
+          geom_bar(aes(x=site,y=prop_total_change,fill=site), stat="identity")+
+          scale_fill_manual(values=site_colors)+
           labs(x="Site",
                y="Person Proportion Change")+
           facet_wrap(~domain)+
@@ -708,15 +700,11 @@ shinyServer(function(input, output) {
       indata <- filter(dc_output_all(),site==input$sitename_dc&
                          application=='rows')
     }
-    tc_prev<-paste0('total_ct_',config('db_previous'))
-    tc_new<-paste0('total_ct_',config('db_current'))
     if(input$largen_toggle==1|(input$largen_toggle==2&input$sitename_dc!='total')){
       plt<-ggplot(indata%>%mutate(
         text=paste0("site: ",site,
                     "\ndomain: ",domain,
-                    "\nproportion change: ",prop_total_change,
-                    "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
-                    "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
+                    "\nproportion change: ",prop_total_change)),
         aes(x=site, y=domain, fill=prop_total_change, text=text))+
         geom_tile()+
         scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+

@@ -22,7 +22,7 @@ shinyUI(fluidPage(tags$head(
 title = "PEDSnet DQA Dashboard",
 
 # Application Title
-navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
+navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                           style = "padding-top:0px; padding-bottom:4px;"),
                                       "PEDSnet DQA Dashboard",
                                       style = "font-family: Trebuchet MS; color: white; font-size: 200%")),
@@ -101,8 +101,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  mainPanel(
                                    fluidRow(
                                      p("Note that sites only show up if there is at least one violation"),
-                                     box(title="Valueset Violations Plot", width=12, plotOutput("vs_plot")),
-                                     box(title="Violations Listings", width=12, DT::dataTableOutput("vs_table"))
+                                     box(title="Valueset Violations Plot", width=12, plotOutput("vs_plot"))
                                      )
                                  )
                                )),
@@ -128,7 +127,6 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                          align='left',
                                               tabBox(width='100%',
                                                 tabPanel("Vocabulary Conformance Violations Plot", plotlyOutput("vc_plot")),
-                                            tabPanel("Violations Listings", DT::dataTableOutput("vc_table")),
                                             tabPanel("Acceptable Vocabularies",
                                                      DT::dataTableOutput("vc_vocabs")))
                                        )#column
@@ -160,15 +158,9 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
-                                     h2("Unmapped Concepts Overall"),
+                                     box(title="Unmapped Concepts Overall",
                                      # Unmapped Concepts Proportions
-                                     tabBox(
-                                       tabPanel("Unmapped Concepts Plot",
-                                            plotOutput("uc_overall_plot",height=600,width=1000)),
-                                       tabPanel("Top Unmapped Source Values",
-                                                h6("Top 10 unmapped source values per column per site"),
-                                                p("proportion_of_unmapped is the count of the given source value divided by the number of unmapped rows for that column. Not displayed for Summary Metrics total"),
-                                                DT::dataTableOutput("uc_top_tbl", width=1000)))),
+                                     plotOutput("uc_overall_plot",height=600,width=1000))),
                                     fluidRow(box(title="Unmapped Concepts by Year", width=12,
                                          plotOutput("uc_yr_plot", height=600)))
                                  )#mainpanel

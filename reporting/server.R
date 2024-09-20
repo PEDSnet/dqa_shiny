@@ -13,6 +13,7 @@ library(forcats)
 #' Function for replacing site names with masked identifiers
 reid<-function(tbl){
   distinct_sites <- tbl %>%
+    filter(site!='total')%>%
     distinct(site)
 
   # create map of site name to masked identifier
@@ -21,9 +22,10 @@ reid<-function(tbl){
            site_newid=paste0("site ", sitenum))
 
   rslt <- tbl %>%
-    inner_join(site_nums, by = 'site')%>%
-    select(-site)%>%
-    mutate(site = case_when(str_detect(site_newid, '[0-9]') ~
+    left_join(site_nums, by = 'site')%>%
+    rename(site_rl=site)%>%
+    mutate(site = case_when(site_rl=='total'~'total',
+                            str_detect(site_newid, '[0-9]') ~
                               paste0(str_extract(site_newid, '^[^0-9]+'),
                                      sprintf('%02d',
                                              as.integer(str_extract(site_newid,
@@ -240,24 +242,25 @@ shinyServer(function(input, output) {
   # best mapped concepts ----
   ### fetch data
   top_rolled <-  results_tbl('bmc_gen_output_concepts_pp')%>%
+    rename(site_rl=site)%>%
     filter(include_new==0)%>%
     collect()%>%
-    group_by(site, check_desc)%>%
+    group_by(site_rl, check_desc)%>%
     slice_max(., n=5, order_by=row_proportions) %>%
     select(check_desc,concept)%>%
     ungroup()%>%
-    group_by(site, check_desc)%>%
+    group_by(site_rl, check_desc)%>%
     summarize(named_vec = list(concept))%>%
     unnest_wider(named_vec, names_sep="_")%>%
-    unite("top5", -c(site, check_desc), sep=", ", na.rm=TRUE)
+    unite("top5", -c(site_rl, check_desc), sep=", ", na.rm=TRUE)
 
   bmc_pp <- reactive({
     if(input$largen_toggle==1){
       res('bmc_gen_output_pp')%>%
-        left_join(top_rolled, by = c('site', 'check_desc'))
+        left_join(top_rolled, by = c('site_rl', 'check_desc'))
     }else{
       res('bmc_gen_output_ln')%>%
-        left_join(top_rolled, by = c('site', 'check_desc'))
+        left_join(top_rolled, by = c('site_rl', 'check_desc'))
     }
   })
   bmc_pp_concepts <- reactive({
@@ -318,44 +321,23 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId="fot_subdomain_overall", choices=choices_new_fot)
   })
 
-  fot_output_heuristic <- reactive({results_tbl('fot_heuristic_summary_pp') %>%
-      filter(domain!='labs')%>% # remove in future versions
-      collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
-  })
-
-  # update choices for domain
-  # observeEvent(fot_output_heuristic(), {
-  #   choices_new_fot<-unique(fot_output_heuristic()$domain)%>%sort()
-  #   updateSelectInput(inputId="fot_domain", choices=choices_new_fot)
-  # })
-
   # limit table to domain selected for specific check choices
-
   fot_output <- reactive({
-    r<-results_tbl('fot_heuristic_pp') %>%
-      inner_join(results_tbl('fot_heuristic_summary_pp'),
-                 by=c('domain','check_name', 'site')) %>%
-      inner_join(select(results_tbl('fot_output_mnth_ratio_pp'),
-                        c(row_cts, check_name, domain, site, month_end)),
-                 by = c('check_name', 'domain', 'site', 'month_end'))%>%
+    # get consistent site names
+    fot_output_summary_ratio()%>%distinct(site_rl, site)%>%
+    inner_join(select(res('fot_heuristic_pp'),-site), by = 'site_rl') %>%
+      inner_join(select(res('fot_heuristic_summary_pp'),-site),
+                 by=c('domain','check_name', 'site_rl')) %>%
+      inner_join(select(res('fot_output_mnth_ratio_pp'),
+                        c(row_cts, check_name, domain, site_rl, month_end)),
+                 by = c('check_name', 'domain', 'site_rl', 'month_end'))%>%
       collect() %>%
       filter(domain==input$fot_domain)
-    reid(r)
   })
   fot_output_site <- reactive({
-    r<-results_tbl('fot_heuristic_pp') %>%
-      inner_join(results_tbl('fot_heuristic_summary_pp'),
-                 by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>%
-      inner_join(select(results_tbl('fot_output_mnth_ratio_pp'),
-                        c(row_cts, check_name, domain, site, month_end)),
-                 by = c('check_name', 'domain', 'site', 'month_end'))%>%
-      collect() %>%
-      filter(domain==input$fot_domain,
-             site==input$sitename_fot,
+    fot_output() %>%
+      filter(site==input$sitename_fot,
              check_desc%in%input$fot_subdomain_site)
-    reid(r)
   })
 
   # adjust available site name
@@ -787,32 +769,6 @@ shinyServer(function(input, output) {
     }
     return(outplot)
   })
-  output$vs_table <- DT::renderDT({
-    if(input$sitename_vs_conf=='total'){
-      outtable <-filter(vs_output(), !accepted_value)%>%
-        mutate(total_violations=format(tot_ct, big.mark=','),
-               total_rows=format(total_denom_ct, big.mark=','))%>%
-        select(site, table_application, vocabulary_id, total_violations, total_rows)
-    }
-    else if(nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))!=0){
-      outtable <-filter(vs_output(), site==input$sitename_vs_conf&!accepted_value)%>%
-        mutate(total_violations=format(tot_ct, big.mark=','),
-               total_rows=format(total_denom_ct, big.mark=','))%>%
-        select(table_application, vocabulary_id, total_violations, total_rows)
-      # filter(vc_vs_output(), check_type=='vs'&site==input$sitename_conf)%>%
-      #   group_by(site, check_type, table_application, vocabulary_id)%>%
-      #   summarise(tot_viol=as.integer(sum(tot_viol)),
-      #             tot_rows=as.integer(min(tot_rows)))%>% # denom is the same for all in group
-      #   ungroup() %>%
-      #   mutate(total_violations=format(tot_viol, big.mark=','),
-      #           total_rows=format(tot_rows, big.mark=','))%>%
-      #   select(-c(check_type, site, tot_viol, tot_rows))
-    }
-    else{
-      outtable <- tibble(None="")
-    }
-    return(outtable)
-  })
   # VOCABULARY CONFORMANCE -----
   output$vc_overall_plot <- renderPlotly({
     if(input$sitename_vc_conf=='total'){
@@ -903,31 +859,6 @@ shinyServer(function(input, output) {
     }
     return(ggplotly(outplot, tooltip="text"))
   })
-  output$vc_table <- DT::renderDT({
-    if(input$sitename_vc_conf=='total'){
-      outtable <-filter(vc_output_vocablevel(), !accepted_value)%>%
-        mutate(total_violations=format(tot_ct, big.mark=','),
-               total_rows=format(total_denom_ct, big.mark=','))%>%
-        select(site, table_application, vocabulary_id, total_violations, total_rows)
-    }else if(nrow(filter(vc_output_vocablevel(), site==input$sitename_vc_conf&!accepted_value))!=0){
-      outtable <-filter(vc_output_vocablevel(), site==input$sitename_vc_conf&!accepted_value)%>%
-        mutate(total_violations=format(tot_ct, big.mark=','),
-               total_rows=format(total_denom_ct, big.mark=','))%>%
-        select(table_application, vocabulary_id, total_violations, total_rows)
-      # outtable <- filter(vc_vs_output(), check_type=='vc'&site==input$sitename_conf)%>%
-      #   group_by(site, check_type, table_application, vocabulary_id)%>%
-      #   summarise(tot_viol=as.integer(sum(tot_viol)),
-      #             tot_rows=as.integer(min(tot_rows)))%>% # denom is the same for all in group
-      #   ungroup() %>%
-      #   mutate(total_violations=format(tot_viol, big.mark=','),
-      #          total_rows=format(tot_rows, big.mark=','))%>%
-      #   select(-c(check_type, site, tot_viol, tot_rows))
-    }
-    else{
-      outtable <- tibble(None="")
-    }
-    return(outtable)
-  })
 
   # vocabulary conformance table of vocabs
   output$vc_vocabs<-DT::renderDT({
@@ -1009,10 +940,10 @@ shinyServer(function(input, output) {
           theme_bw()+
           theme(axis.text.x = element_text(size=12),
                 axis.text.y = element_text(size=12),
-                axis.title=element_text(size=18))+
+                axis.title=element_text(size=18),
+                legend.position="none")+
           scale_color_manual(values=site_colors)+
-          scale_x_continuous(breaks = pretty_breaks())+
-         theme(legend.position = "none")
+          scale_x_continuous(breaks = pretty_breaks())
       }
     }
     else{
@@ -1026,24 +957,12 @@ shinyServer(function(input, output) {
         scale_color_manual(values=site_colors)+
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=12),
               axis.text.y = element_text(size=12),
-              axis.title=element_text(size=18))+
+              axis.title=element_text(size=18),
+              legend.position="none")+
         scale_x_continuous(breaks=pretty_breaks())
     }
     return(outplot)
   })
-
-  output$uc_top_tbl <- DT::renderDT({
-    if(input$largen_toggle==2&input$sitename_uc=='total'){outtable<-data.frame()}
-    else if(input$sitename_uc=="total"){
-      outtable <- uc_top_output_overall()%>%
-        select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
-    }else{
-      outtable <- filter(uc_top_output(), site==input$sitename_uc) %>%
-        select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
-    }
-    return(outtable)
-  }
-  )
 
   # PERSON FACTS/RECORDS ------
   ### barplot
@@ -1487,7 +1406,8 @@ shinyServer(function(input, output) {
         geom_point(aes(y=median_val), shape=23, size=1)+
         theme_bw()+
         labs(x="Domain",
-             y="Proportion missing visit_occurrence_id")
+             y="Proportion missing visit_occurrence_id")+
+        theme(legend.position="none")
     }
 
 

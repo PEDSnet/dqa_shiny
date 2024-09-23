@@ -13,7 +13,7 @@ library(forcats)
 #' Function for replacing site names with masked identifiers
 reid<-function(tbl){
   distinct_sites <- tbl %>%
-    filter(site!='total')%>%
+    filter(!site%in%c('total','allsite_median','allsite_mean'))%>%
     distinct(site)
 
   # create map of site name to masked identifier
@@ -24,7 +24,7 @@ reid<-function(tbl){
   rslt <- tbl %>%
     left_join(site_nums, by = 'site')%>%
     rename(site_rl=site)%>%
-    mutate(site = case_when(site_rl=='total'~'total',
+    mutate(site = case_when(site_rl%in%c('total','allsite_median','allsite_mean')~site_rl,
                             str_detect(site_newid, '[0-9]') ~
                               paste0(str_extract(site_newid, '^[^0-9]+'),
                                      sprintf('%02d',
@@ -53,9 +53,9 @@ plot_fot_fn <- function(data) {
   data%>%
     plotly::plot_ly(
       x = ~month_end,
-      y = ~row_cts,
+      y = ~row_ratio,
       yaxis="y1",
-      name = "Row Counts",
+      name = "Fact Rate",
       type="scatter",
       mode="lines") %>%
     plotly::add_trace(
@@ -69,7 +69,7 @@ plot_fot_fn <- function(data) {
     layout(
       yaxis2 = ay,
       xaxis = list(title="Month End"),
-      yaxis = list(title="Row Count"))
+      yaxis = list(title="Fact Rate (records per 10,000 visits)"))
 
 }
 
@@ -329,7 +329,7 @@ shinyServer(function(input, output) {
       inner_join(select(res('fot_heuristic_summary_pp'),-site),
                  by=c('domain','check_name', 'site_rl')) %>%
       inner_join(select(res('fot_output_mnth_ratio_pp'),
-                        c(row_cts, check_name, domain, site_rl, month_end)),
+                        c(row_cts, check_name, domain, site_rl, month_end, row_ratio)),
                  by = c('check_name', 'domain', 'site_rl', 'month_end'))%>%
       collect() %>%
       filter(domain==input$fot_domain)

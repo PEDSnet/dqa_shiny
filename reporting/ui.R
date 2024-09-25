@@ -269,7 +269,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    fluidRow(
                                      #summary
                                      box(title="Summary Plot",width=12,
-                                         plotlyOutput("fot_summary_plot")),
+                                         plotOutput("fot_summary_plot")),
                                      box(title="Site Specific Facts Over Time",width=12,
                                          uiOutput("fot_plot"))
                                    )#fluidRow

@@ -47,7 +47,7 @@ plot_fot_fn <- function(data) {
     tickfont = list(color = "red"),
     overlaying = "y",
     side = "right",
-    title = "Normalized Row Count")
+    title = "Deviance Heuristic")
 
 
   data%>%
@@ -64,7 +64,7 @@ plot_fot_fn <- function(data) {
       type="scatter",
       mode="lines",
       yaxis="y2",
-      name = "Normalized",
+      name = "Deviance Heuristic",
       line=list(color='navy', dash='dot'))%>%
     layout(
       yaxis2 = ay,
@@ -658,13 +658,15 @@ shinyServer(function(input, output) {
         labs(y="Proportion of Total Records",
              title="Violating Records per Column")+
         theme(axis.text.x=element_text(size=14),
-              axis.text.y=element_text(size=14))
+              axis.text.y=element_text(size=14),
+              axis.title.x=element_text(size=14),
+              axis.title.y=element_text(size=14))
       # individual site or no comparison
       }else if((input$largen_toggle==1|input$comp_vs_ln==0)&
                nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
       outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
         geom_bar(stat="identity", position="dodge") +
-        geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
+        geom_label(aes(x=measurement_column, y=tot_prop, label=round(tot_prop,3)),
                    position=position_dodge(),
                    show.legend = FALSE)+
         ylim(0, 1)+
@@ -672,7 +674,11 @@ shinyServer(function(input, output) {
         theme_bw()+
         labs(x="Column Name",
              y="Proportion of Total Records",
-             title="Violating Records per Column")
+             title="Violating Records per Column")+
+        theme(axis.text.x=element_text(size=14),
+              axis.text.y=element_text(size=14),
+              axis.title.x=element_text(size=14),
+              axis.title.y=element_text(size=14))
       }else if(input$largen_toggle==2&input$comp_vs_ln==1&
                nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
         outplot<-ggplot(filter(vs_output(), site==input$sitename_vs_conf)%>%
@@ -688,7 +694,11 @@ shinyServer(function(input, output) {
           theme_bw()+
           scale_fill_manual(values=site_colors)+
           coord_flip()+
-          theme(legend.position = "none")
+          theme(legend.position = "none",
+                axis.text.x=element_text(size=14),
+                      axis.text.y=element_text(size=14),
+                      axis.title.x=element_text(size=14),
+                      axis.title.y=element_text(size=14))
       }else{
       outplot <- ggplot()+
         geom_blank()+
@@ -804,6 +814,7 @@ shinyServer(function(input, output) {
           theme_bw()+
           theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
                 axis.title=element_text(size=18),
+                strip.text = element_text(size=14),
                 legend.position="none")+
           scale_fill_manual(values=site_colors)+
           labs(x="Site",
@@ -847,9 +858,10 @@ shinyServer(function(input, output) {
         labs(x = "Year",
              y = "Proportion Unmapped")+
         theme_bw()+
-        theme(axis.text.x = element_text(size=12),
-              axis.text.y = element_text(size=12),
-              axis.title=element_text(size=18))+
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
+              axis.text.y = element_text(size=14),
+              axis.title=element_text(size=18),
+              strip.text = element_text(size=14))+
         scale_color_manual(values=site_colors)+
         scale_x_continuous(breaks = pretty_breaks())+
         theme(legend.position = "none")
@@ -864,9 +876,10 @@ shinyServer(function(input, output) {
           labs(x = "Year",
                y = "Proportion Unmapped")+
           theme_bw()+
-          theme(axis.text.x = element_text(size=12),
-                axis.text.y = element_text(size=12),
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
+                axis.text.y = element_text(size=14),
                 axis.title=element_text(size=18),
+                strip.text = element_text(size=14),
                 legend.position="none")+
           scale_color_manual(values=site_colors)+
           scale_x_continuous(breaks = pretty_breaks())
@@ -879,9 +892,10 @@ shinyServer(function(input, output) {
              y = "Proportion Unmapped")+
         theme_bw()+
         scale_color_manual(values=site_colors)+
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=12),
-              axis.text.y = element_text(size=12),
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
+              axis.text.y = element_text(size=14),
               axis.title=element_text(size=18),
+              strip.text = element_text(size=14),
               legend.position="none")+
         scale_x_continuous(breaks=pretty_breaks())
     }
@@ -1030,7 +1044,7 @@ shinyServer(function(input, output) {
 
   # FACTS OVER TIME -----
   ### overall plot
-  output$fot_summary_plot <- renderPlotly({
+  output$fot_summary_plot <- renderPlot({
     if(input$largen_toggle==1){
       indat<-fot_output_summary_ratio() %>%
         filter(check_desc==input$fot_subdomain_overall&!site%in%c('allsite_median',
@@ -1056,11 +1070,14 @@ shinyServer(function(input, output) {
                                         group=site),linewidth=1)+
       scale_color_manual(values=site_colors) +
       theme_bw()+
-      labs(x="Time (month)",
+      labs(x="Time Period",
            y="Fact Rate (records per 10,000 visits)",
            title="Fact Rate over Time")+
-      scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))
-    return(ggplotly(showplot))
+      scale_x_date(limits = c(input$date_fot_min, input$date_fot_max))+
+      theme(axis.text.x=element_text(size=14),
+            axis.text.y=element_text(size=14),
+            axis.title=element_text(size=16))
+    return(showplot)
   })
   ### site-specific plots
   # Insert the right number of plot output objects into the web page
@@ -1407,7 +1424,10 @@ shinyServer(function(input, output) {
       labs(x="Concept Group",
            y="Proportion",
            title="Proportion of Patients with Expected Concept")+
-      theme(legend.position = "none")+
+      theme(axis.text.x=element_text(size=14),
+            axis.text.y=element_text(size=14),
+            axis.title=element_text(size=16),
+            legend.position = "none")+
       coord_flip()
   })
 

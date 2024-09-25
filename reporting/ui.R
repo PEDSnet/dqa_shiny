@@ -57,10 +57,11 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                                choices = NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 2 && input.sitename_dc == 'total'",
-                                     selectInput(inputId="sitename_dc_ln",
-                                                 label="Comparison Site",
-                                                 choices=NULL)
+                                     condition="input.largen_toggle == 2",
+                                     radioButtons(inputId="comp_dc_ln",
+                                                 label="Comparison Type",
+                                                 choices=list("Across Sites"=1,
+                                                              "None"=0))
                                    ),
                                    selectInput(inputId = "dc_domain",
                                                label="Domain",
@@ -92,10 +93,11 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                              choices = NULL),
                                  # only show comparison option for overall metrics
                                  conditionalPanel(
-                                   condition="input.largen_toggle == 2 && input.sitename_vs_conf == 'total'",
-                                   selectInput(inputId="sitename_vs_ln",
-                                               label="Comparison Site",
-                                               choices=NULL)
+                                   condition="input.largen_toggle == 2",
+                                   radioButtons(inputId="comp_vs_ln",
+                                               label="Comparison Type",
+                                               choices=list("Across Sites"=1,
+                                                            "None"=0))
                                  )),
                                  # Begin main
                                  mainPanel(
@@ -112,10 +114,11 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                                label="Institution",
                                                choices=NULL),
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 2 && input.sitename_vc_conf == 'total'",
-                                     selectInput(inputId="sitename_vc_ln",
-                                                 label="Comparison Site",
-                                                 choices=NULL)
+                                     condition="input.largen_toggle == 2",
+                                     radioButtons(inputId="comp_vc_ln",
+                                                  label="Comparison Type",
+                                                  choices=list("Across Sites"=1,
+                                                               "None"=0))
                                    )),
                                  mainPanel(
                                      fluidRow(p("Note: Proportions are of the total rows in the table. Proportions that do not add up to 1 for the given column indicate missing values."),
@@ -142,10 +145,11 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                                choices = NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 2 && input.sitename_uc == 'total'",
-                                     selectInput(inputId="sitename_uc_ln",
-                                                 label="Comparison Site",
-                                                 choices=NULL)
+                                     condition="input.largen_toggle == 2",
+                                     radioButtons(inputId="comp_uc_ln",
+                                                  label="Comparison Type",
+                                                  choices=list("Across Sites"=1,
+                                                               "None"=0))
                                    ),
                                    sliderInput("date_uc_range",
                                                label="Date Range",
@@ -175,10 +179,11 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                                choices = NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 2 && input.sitename_pf == 'total'",
-                                     selectInput(inputId="sitename_pf_ln",
-                                                 label="Comparison Site",
-                                                 choices=NULL)
+                                     condition="input.largen_toggle == 2",
+                                     radioButtons(inputId="comp_pf_ln",
+                                                  label="Comparison Type",
+                                                  choices=list("Across Sites"=1,
+                                                               "None"=0))
                                    )),
                                  # Begin main
                                  mainPanel(
@@ -204,10 +209,11 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                                choices = NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 2 && input.sitename_bmc == 'total'",
-                                     selectInput(inputId="sitename_bmc_ln",
-                                                 label="Comparison Site",
-                                                 choices=NULL)
+                                     condition="input.largen_toggle == 2",
+                                     radioButtons(inputId="comp_bmc_ln",
+                                                  label="Comparison Type",
+                                                  choices=list("Across Sites"=1,
+                                                               "None"=0))
                                    )),
                                  # Begin main
                                  mainPanel(
@@ -278,13 +284,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                                choices = NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 2 && input.sitename_dcon == 'total'",
-                                     selectInput(inputId="sitename_dcon_ln",
-                                                 label="Comparison Site",
-                                                 choices=NULL)
+                                     condition="input.largen_toggle == 2",
+                                     radioButtons(inputId="comp_dcon_ln",
+                                                  label="Comparison Type",
+                                                  choices=list("Across Sites"=1,
+                                                               "None"=0))
                                    ),
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 1 || input.sitename_dcon != 'total'",
+                                     condition="input.largen_toggle == 1 || input.comp_dcon_ln ==0",
                                      selectInput(inputId = "denom_dcon",
                                                label = "Select Denominator",
                                                choices = c("Overall",
@@ -310,7 +317,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                sidebarLayout(
                                  sidebarPanel(
                                    selectInput(inputId="sitename_mf_visitid",
-                                               label="PEDSnet Institution",
+                                               label="Institution",
                                                choices = NULL),
                                    checkboxGroupInput(inputId = "mf_visitid_domain",
                                                label="Choose Domain/s",
@@ -330,7 +337,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                sidebarLayout(
                                  sidebarPanel(
                                    selectInput(inputId="sitename_ecp",
-                                               label="PEDSnet Institution",
+                                               label="Institution",
                                                choices = NULL)),
                                  # Begin main
                                  mainPanel(

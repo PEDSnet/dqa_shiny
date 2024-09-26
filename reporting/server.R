@@ -251,7 +251,10 @@ shinyServer(function(input, output) {
     }
   })
   bmc_pp_concepts <- reactive({
-    res('bmc_gen_output_concepts_pp')
+    bmc_pp()%>%distinct(site_rl, site)%>%
+    inner_join(results_tbl('bmc_gen_output_concepts_pp')%>%rename(site_rl=site)%>%collect(),
+               by = 'site_rl')%>%
+      select(-site_rl)
   })
 
   # adjust available site name

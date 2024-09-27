@@ -121,10 +121,6 @@ shinyServer(function(input, output) {
       mutate(prop_viol=round(tot_prop,2))
     }else{res('vc_vs_output_ln')%>%filter(check_type=='vc')}
   })
-  vc_output_vocablevel<-reactive({
-    res('vc_vs_output_pp')%>%filter(check_type=='vc')%>%
-      mutate(prop_viol=round(tot_prop,2))
-  })
   vs_output <- reactive({
     if(input$largen_toggle==1){
       res('vc_vs_output_pp') %>% filter(check_type=='vs')%>%
@@ -746,7 +742,7 @@ shinyServer(function(input, output) {
           coord_flip()+
           theme(legend.position = "none")
      }else{
-      plt<-ggplot(filter(vc_output_vocablevel(), site==input$sitename_vc_conf)%>%
+      plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                     mutate(text=paste0("site: ",site,
                                        "\nvocabulary: ",vocabulary_id,
                                        "\nproportion: ",prop_viol)),
@@ -764,7 +760,7 @@ shinyServer(function(input, output) {
 
   output$vc_plot <- renderPlotly({
     if(input$sitename_vc_conf=='total'){
-      outplot<-ggplot(filter(vc_output_vocablevel(),!accepted_value)%>%
+      outplot<-ggplot(filter(vc_output(),!accepted_value)%>%
                         mutate(text=paste0("vocabulary: ",vocabulary_id,
                                            "\nproportion: ",prop_viol)),
                       aes(x=site,y=tot_prop,fill=vocabulary_id, text=text))+
@@ -774,8 +770,8 @@ shinyServer(function(input, output) {
         scale_fill_pedsn_dq()+
         theme(axis.text.x = element_text(angle=90))+
         facet_wrap(~measurement_column)
-    }else if(nrow(filter(vc_output_vocablevel(), site==input$sitename_vc_conf&!accepted_value))>0){
-      outplot<-ggplot(filter(vc_output_vocablevel(), site==input$sitename_vc_conf&!accepted_value)%>%
+    }else if(nrow(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value))>0){
+      outplot<-ggplot(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value)%>%
                         mutate(text=paste0("vocabulary: ",vocabulary_id,
                                            "\nproportion: ",prop_viol)), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id, text=text)) +
         geom_bar(stat="identity", position="dodge") +

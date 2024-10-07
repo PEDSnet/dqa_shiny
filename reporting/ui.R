@@ -32,12 +32,18 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                         tags$h4("Welcome to the PEDSnet Data Quality Dashboard!"),
                         tags$h6("Report Refresh Date:", Sys.Date()),
                         tags$h6("Current Database Version:", config('db_current')),
+                        radioButtons(inputId="largen_toggle",
+                                     label="Display Type",
+                                     choices=list('Individual Sites'=1,
+                                               'Summary Metrics'=2),
+                                     selected=1),
+                        tags$p("Selecting Individual Sites will display the default dashboard, where each site is displayed individually and against each other site. Selecting Summary Metrics will modify the visualizations to compare each site against overall metrics across the other sites. This option is helpful to de-clutter if there are a large number of sites."),
                         tags$p("Contact pedsnetdcc@chop.edu for more information")
                       ),
                       mainPanel(
-                        tags$p("The PEDSnet Data Quality Dashboard (PDQD) provides output from the data quality program developed and maintained
+                        tags$p("The PEDSnet Data Quality Dashboard (PQD) provides output from the data quality program developed and maintained
                                                  by the PEDSnet Data Quality team."),
-                        tags$p("The PDQD is displayed by check type. A check type is a category of checks that can be
+                        tags$p("The PQD is displayed by check type. A check type is a category of checks that can be
                                                  executed across a wide variety of fields, domains, tables, or other applications.
                                                  Below are descriptions of each check type."),
                         DT::dataTableOutput("dt_descriptions")
@@ -49,6 +55,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    selectInput(inputId="sitename_dc",
                                                label="Institution",
                                                choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_dc == 'total'",
+                                     selectInput(inputId="sitename_dc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   ),
                                    selectInput(inputId = "dc_domain",
                                                label="Domain",
                                                choices = c('adt')), # set a default to avoid empty string detection
@@ -76,7 +89,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  sidebarPanel(
                                  selectInput(inputId = "sitename_vs_conf",
                                              label = "Institution",
-                                             choices = NULL)),
+                                             choices = NULL),
+                                 # only show comparison option for overall metrics
+                                 conditionalPanel(
+                                   condition="input.largen_toggle == 2 && input.sitename_vs_conf == 'total'",
+                                   selectInput(inputId="sitename_vs_ln",
+                                               label="Comparison Site",
+                                               choices=NULL)
+                                 )),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
@@ -91,7 +111,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  sidebarPanel(
                                    selectInput(inputId="sitename_vc_conf",
                                                label="Institution",
-                                               choices=NULL)),
+                                               choices=NULL),
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_vc_conf == 'total'",
+                                     selectInput(inputId="sitename_vc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   )),
                                  mainPanel(
                                      fluidRow(p("Note: Proportions are of the total rows in the table. Proportions that do not add up to 1 for the given column indicate missing values."),
                                               box(title="Overall Vocabularies",
@@ -116,6 +142,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    selectInput(inputId = "sitename_uc",
                                                label = "Institution",
                                                choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_uc == 'total'",
+                                     selectInput(inputId="sitename_uc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   ),
                                    sliderInput("date_uc_range",
                                                label="Date Range",
                                                min=1990L,
@@ -134,7 +167,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                             plotOutput("uc_overall_plot",height=600,width=1000)),
                                        tabPanel("Top Unmapped Source Values",
                                                 h6("Top 10 unmapped source values per column per site"),
-                                                p("proportion_of_unmapped is the count of the given source value divided by the number of unmapped rows for that column"),
+                                                p("proportion_of_unmapped is the count of the given source value divided by the number of unmapped rows for that column. Not displayed for Summary Metrics total"),
                                                 DT::dataTableOutput("uc_top_tbl", width=1000)))),
                                     fluidRow(box(title="Unmapped Concepts by Year", width=12,
                                          plotOutput("uc_yr_plot", height=600)))
@@ -147,7 +180,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  sidebarPanel(
                                    selectInput(inputId = "sitename_pf",
                                                label = "Institution",
-                                               choices = NULL)),
+                                               choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_pf == 'total'",
+                                     selectInput(inputId="sitename_pf_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   )),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
@@ -169,7 +209,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  sidebarPanel(
                                    selectInput(inputId = "sitename_bmc",
                                                label = "Institution",
-                                               choices = NULL)),
+                                               choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_bmc == 'total'",
+                                     selectInput(inputId="sitename_bmc_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   )),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
@@ -238,11 +285,20 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    selectInput(inputId = "sitename_dcon",
                                                label = "Select Site",
                                                choices = NULL),
-                                   selectInput(inputId = "denom_dcon",
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2 && input.sitename_dcon == 'total'",
+                                     selectInput(inputId="sitename_dcon_ln",
+                                                 label="Comparison Site",
+                                                 choices=NULL)
+                                   ),
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 1 || input.sitename_dcon != 'total'",
+                                     selectInput(inputId = "denom_dcon",
                                                label = "Select Denominator",
                                                choices = c("Overall",
                                                            "Cohort 1",
-                                                           "Cohort 2")),
+                                                           "Cohort 2"))),
                                    checkboxGroupInput(inputId="dcon_check",
                                                       label="Specific Check",
                                                       choices=NULL)),

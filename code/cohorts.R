@@ -9,3 +9,18 @@
 #' requests, it may be more readable to separate different cohorts or
 #' operations on cohorts into logical groups in different files.
 #'
+
+mask_site <- function(dat){
+  site_nums <- dat %>%
+    distinct(site)
+  site_nums <- site_nums[sample(1:nrow(site_nums)),]%>% # re-order so not alphabetically arranged
+    filter(site!='pedsnet_total'&site!='all')%>%
+    mutate(sitenum=as.character(row_number()))
+  
+  dat %>%
+    left_join(site_nums, by = 'site')%>%
+    mutate(site_masked=case_when(site=='pedsnet_total'|site=='all'~'pedsnet_total',
+                                 TRUE~paste0("Site ",sitenum)))%>%
+    select(-site)%>%
+    rename(site=site_masked)
+}

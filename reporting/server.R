@@ -71,7 +71,10 @@ shinyServer(function(input, output) {
 
   ### adjust available site name
   observeEvent(dc_output_all(), {
-    choices_new<-c("total",unique(dc_output_all()$site)%>%sort())
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(dc_output_all()$site)%>%sort())
+    }else{choices_new<-unique(filter(dc_output_all(),site!='total')$site)%>%sort()
+    }
     updateSelectInput(inputId="sitename_dc", choices=choices_new)
   })
 
@@ -85,18 +88,8 @@ shinyServer(function(input, output) {
 
   ### filter data for plotting
   dc_output <- reactive({
-    if(input$largen_toggle==1){
-      res('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
-        filter(str_detect(domain,input$dc_domain))
-    }else{
-      res('dc_output_ln')%>%filter(domain!='measurement_anthro')%>%
-        filter(str_detect(domain,input$dc_domain))
-    }
-  })
-  ### adjust available site name for large n comparison
-  observeEvent(dc_output_all(), {
-    choices_new<-unique((dc_output_all()%>%filter(site!='total'))$site)%>%sort()
-    updateSelectInput(inputId="sitename_dc_ln", choices=choices_new)
+    dc_output_all()%>%
+      filter(str_detect(domain,input$dc_domain))
   })
 
   ### update choices for subdomain
@@ -106,7 +99,7 @@ shinyServer(function(input, output) {
   })
 
 
-  # vocabulary and valueset conformance ------------
+  ## vocabulary conformance ------------
   ### pp data
   vc_output <- reactive({
     if(input$largen_toggle==1){
@@ -114,40 +107,17 @@ shinyServer(function(input, output) {
       mutate(prop_viol=round(tot_prop,2))
     }else{res('vc_output_ln')}
   })
-  vc_output_vocablevel<-reactive({
-    res('vc_output_pp')%>%
-      mutate(prop_viol=round(tot_prop,2))
-  })
-  vs_output <- reactive({
-    if(input$largen_toggle==1){
-      res('vs_output_pp')%>%
-        mutate(prop_viol=round(tot_prop,2))
-    }else{res('vs_output_ln')}
-  })
-
   vc_violations <- reactive({
     res('vc_violations_pp') %>%
       mutate(prop_viol=round(tot_prop,2))
   })
-  ### adjust available site name
-  observeEvent(vs_output(), {
-    sites_w_viol<-vs_output()%>%filter(!accepted_value)
-    choices_new<-c("total", unique(sites_w_viol$site)%>%sort())
-    updateSelectInput(inputId = "sitename_vs_conf", choices=choices_new)
-  })
-  observeEvent(vc_violations(), {
-    choices_new<-c("total", unique(vc_violations()$site)%>%sort())
-    updateSelectInput(inputId = "sitename_vc_conf", choices=choices_new)
-  })
-  ### adjust available site name for large n comparison for vs
-  observeEvent(vs_output(), {
-    choices_new<-unique((vs_output()%>%filter(site!='total'&!accepted_value))$site)%>%sort()
-    updateSelectInput(inputId="sitename_vs_ln", choices=choices_new)
-  })
-  ### adjust available site name for large n comparison for vc
+  ## adjust available site name
   observeEvent(vc_output(), {
-    choices_new<-unique((vs_output()%>%filter(site!='total'))$site)%>%sort()
-    updateSelectInput(inputId="sitename_vc_ln", choices=choices_new)
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(vc_output()$site)%>%sort())
+    }else{choices_new<-unique(filter(vc_output(),site!='total')$site)%>%sort()
+    }
+    updateSelectInput(inputId="sitename_vc_conf", choices=choices_new)
   })
 
   ### acceptable vocabularies for vc
@@ -157,7 +127,24 @@ shinyServer(function(input, output) {
     mutate(acceptable_vocabulary=gsub(".*:","",full_description))%>%
     select(check_domain, check_application, acceptable_vocabulary)
 
-  # unmapped concepts -----
+
+  ## valueset conformance ------
+  vs_output <- reactive({
+    if(input$largen_toggle==1){
+      res('vs_output_pp')%>%
+        mutate(prop_viol=round(tot_prop,2))
+    }else{res('vs_output_ln')}
+  })
+  ### adjust available site name
+  observeEvent(vs_output(), {
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(vs_output()$site)%>%sort())
+    }else{choices_new<-unique(filter(vs_output(),site!='total')$site)%>%sort()
+    }
+    updateSelectInput(inputId="sitename_vs_conf", choices=choices_new)
+  })
+
+## unmapped concepts -----
   ### pp data
   uc_output <- reactive({
     if(input$largen_toggle==1){
@@ -198,16 +185,14 @@ shinyServer(function(input, output) {
   })
   ### adjust available site name
   observeEvent(uc_output(), {
-    choices_new<-c("total", unique(uc_output()$site)%>%sort())
-    updateSelectInput(inputId = "sitename_uc", choices=choices_new)
-  })
-  ### adjust available site name for large n comparison
-  observeEvent(uc_output(), {
-    choices_new<-unique((dc_output_all()%>%filter(site!='total'))$site)%>%sort()
-    updateSelectInput(inputId="sitename_uc_ln", choices=choices_new)
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(uc_output()$site)%>%sort())
+    }else{choices_new<-unique(filter(uc_output(),site!='total')$site)%>%sort()
+    }
+    updateSelectInput(inputId="sitename_uc", choices=choices_new)
   })
 
-  # person facts/records -------
+  ## person facts/records -------
   ### capture data
   pf_output <- reactive({
     if(input$largen_toggle==1){
@@ -216,16 +201,14 @@ shinyServer(function(input, output) {
   })
   ### adjust available site name
   observeEvent(pf_output(), {
-    choices_new<-c("total", unique(pf_output()$site)%>%sort())
-    updateSelectInput(inputId = "sitename_pf", choices=choices_new)
-  })
-  ### adjust available site name for large n site comparison
-  observeEvent(pf_output(), {
-    choices_new<-unique((pf_output()%>%filter(site!='total'))$site)%>%sort()
-    updateSelectInput(inputId="sitename_pf_ln", choices=choices_new)
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(pf_output()$site)%>%sort())
+    }else{choices_new<-unique(filter(pf_output(),site!='total')$site)%>%sort()
+    }
+    updateSelectInput(inputId="sitename_pf", choices=choices_new)
   })
 
-  # best mapped concepts ----
+  ## best mapped concepts ----
   ### fetch data
   top_rolled <-  results_tbl('bmc_gen_output_concepts_pp')%>%
     filter(include_new==0)%>%
@@ -295,7 +278,7 @@ shinyServer(function(input, output) {
       mutate(row_proportions=round(row_proportions,2))
   })
 
-  # facts over time ------
+  ## facts over time ------
   # capture data
   fot_output_summary_ratio <- reactive({res('fot_output_mnth_ratio_pp')})
   # # update domain choices
@@ -361,7 +344,7 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId="fot_subdomain_overall", choices=choices_new_fot)
   })
 
-  # domain concordance -----
+  ## domain concordance -----
   # capture data
   dcon_output <- reactive({
     if(input$largen_toggle==1){
@@ -414,7 +397,7 @@ shinyServer(function(input, output) {
       rownames=FALSE
     )
   )
-  # facts with missing visit ids -------------
+  ## facts with missing visit ids -------------
   # connect with data
   mf_visitid_output <- reactive({
     if(input$largen_toggle==1){
@@ -444,7 +427,7 @@ shinyServer(function(input, output) {
     updateCheckboxGroupInput(inputId="mf_visitid_domain", choices=choices_new)
   })
 
-  # expected concepts present ---------------------
+  ## expected concepts present ---------------------
   ecp_output <- reactive({
     if(input$largen_toggle==1){res('ecp_output_pp')}else{res('ecp_output_ln')}
   })
@@ -489,7 +472,7 @@ shinyServer(function(input, output) {
   )
 
   # PLOTS ------
-  # CHANGES BETWEEN DATA CYCLES ------------------------------
+  ## CHANGES BETWEEN DATA CYCLES ------------------------------
   output$dc_mappings <- DT::renderDT(
     DT::datatable(
       dc_mappings,
@@ -500,193 +483,138 @@ shinyServer(function(input, output) {
 
   # changes between data cycles - record counts
   output$dc_domain_split <- renderPlot({
-    if(input$sitename_dc=="total"){
-      # nothing selected: blank plot
-      if(length(input$dc_subdomain)==0){
-        showplot <- ggplot()+
-          geom_blank()+
-          annotate("text", label="Select a domain and specific check", x=0,y=0)+
-          theme(axis.text.x=element_blank(),
-                axis.ticks.x=element_blank(),
-                axis.text.y=element_blank(),
-                axis.ticks.y=element_blank(),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank())+
-          labs(x="",
-               y="")
-      }else{
-        # individual sites: total
-        if(input$largen_toggle==1){
-          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&application=='rows'),
-                           aes(x=site,y=prop_total_change, fill=site))+
-            geom_bar(stat='identity')+
-            theme_bw()+
-            scale_fill_manual(values=site_colors)+
-            theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
-                  axis.text.y=element_text(size=12),
-                  axis.title=element_text(size=16),
-                  legend.position = "none")+
-            facet_wrap(~domain)+
-            labs(x="Site",
-                 y="Record Proportion Change")
-        }else{
-          # summary metrics: total
-          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&site==input$sitename_dc_ln&application=="rows"),
-                           aes(x=domain,y=prop_total_change))+
-            geom_bar(stat="identity",aes(fill=site))+
-            geom_errorbar(aes(ymin=q1,ymax=q3))+
-            # geom_point(aes(y=q1), shape="\U2014", size=9)+
-            # geom_point(aes(y=q3), shape="\U2014", size=9)+
-            geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
-            theme_bw()+
-            scale_fill_manual(values=site_colors)+
-            theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
-                  axis.text.y=element_text(size=12),
-                  axis.title=element_text(size=16),
-                  legend.position = "none")+
-            labs(x="Site",
-                 y="Record Proportion Change")
-        }
-      }
-    }
-    else{
-      # blank plot: need to make a selection
-      if(length(input$dc_subdomain)==0){
-        showplot <- ggplot()+
-          geom_blank()+
-          annotate("text", label="Select a domain and specific check", x=0,y=0)+
-          theme(axis.text.x=element_blank(),
-                axis.ticks.x=element_blank(),
-                axis.text.y=element_blank(),
-                axis.ticks.y=element_blank(),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank())+
-          labs(x="",
-               y="")
-      }
-      # individual sites OR summary metrics (same plot)
-      else{
-        tc_prev<-paste0('total_ct_',config('db_previous'))
-        tc_new<-paste0('total_ct_',config('db_current'))
-        showplot<- ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
-                                   site==input$sitename_dc&
-                                   application=='rows'), aes(x=site,y=prop_total_change))+
-          geom_segment(aes(x=site,xend=site,y=0,yend=prop_total_change))+
-          geom_label(aes(x=site, y=0, label=paste0("Previous Record Count: ",format(!!sym(tc_prev), big.mark = ",",scientific = FALSE))))+
-          geom_label(aes(x=site, y=prop_total_change, label=paste0("New Record Count: ",format(!!sym(tc_new), big.mark = ",",scientific = FALSE))))+
-          labs(x="Site",
-               y="Records Proportion Change")+
-          facet_wrap(~domain)+
-          theme_bw()
-      }
+    if(length(input$dc_subdomain)==0){
+      showplot <- ggplot()+
+        geom_blank()+
+        annotate("text", label="Select a domain and specific check", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(input$largen_toggle==2&input$comp_dc_ln==1){
+      # summary metrics: comparison
+      showplot<-ggplot(filter(dc_output_all(),domain%in%input$dc_subdomain&site==input$sitename_dc&application=="rows"),
+                       aes(x=domain,y=prop_total_change))+
+        geom_bar(stat="identity",aes(fill=site))+
+        geom_errorbar(aes(ymin=q1,ymax=q3))+
+        geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
+        theme_bw()+
+        scale_fill_manual(values=site_colors)+
+        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16),
+              legend.position = "none")+
+        labs(x="Site",
+             y="Record Proportion Change")
+    }else if(input$sitename_dc=="total"){
+      showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&application=='rows'),
+                       aes(x=site,y=prop_total_change, fill=site))+
+        geom_bar(stat='identity')+
+        theme_bw()+
+        scale_fill_manual(values=site_colors)+
+        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16),
+              legend.position = "none")+
+        facet_wrap(~domain)+
+        labs(x="Site",
+             y="Record Proportion Change")
+    }else{
+      # individual sites OR summary metrics w/o comparison
+      tc_prev<-paste0('total_ct_',config('db_previous'))
+      tc_new<-paste0('total_ct_',config('db_current'))
+      showplot<- ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
+                                 site==input$sitename_dc&
+                                 application=='rows'), aes(x=site,y=prop_total_change))+
+        geom_segment(aes(x=site,xend=site,y=0,yend=prop_total_change))+
+        geom_label(aes(x=site, y=0, label=paste0("Previous Record Count: ",format(!!sym(tc_prev), big.mark = ",",scientific = FALSE))))+
+        geom_label(aes(x=site, y=prop_total_change, label=paste0("New Record Count: ",format(!!sym(tc_new), big.mark = ",",scientific = FALSE))))+
+        labs(x="Site",
+             y="Records Proportion Change")+
+        facet_wrap(~domain)+
+        theme_bw()
     }
     return(showplot)
   })
 
   # changes between data cycles - person counts
   output$dc_domain_split_persons <- renderPlot({
-    if(input$sitename_dc=="total"){
-      # blank plot if nothing selected
-      if(length(input$dc_subdomain)==0){
-        showplot <- ggplot()+
-          geom_blank()+
-          annotate("text", label="Select a domain and specific check", x=0,y=0)+
-          theme(axis.text.x=element_blank(),
-                axis.ticks.x=element_blank(),
-                axis.text.y=element_blank(),
-                axis.ticks.y=element_blank(),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank())+
-          labs(x="",
-               y="")
-      }else if(any(input$dc_subdomain=='specialty')|any(input$dc_subdomain=='care_site')){
-        showplot <- ggplot()+
-          geom_blank()+
-          annotate("text", label="Check not applicable at person level", x=0,y=0)+
-          theme(axis.text.x=element_blank(),
-                axis.ticks.x=element_blank(),
-                axis.text.y=element_blank(),
-                axis.ticks.y=element_blank(),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank())+
-          labs(x="",
-               y="")
-      }else{
-        if(input$largen_toggle==1){
-          # individual sites: total
-          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
-                                    application=='person'),
-                           aes(x=site,y=prop_total_change, fill=site))+
-            geom_bar(stat='identity')+
-            theme_bw()+
-            scale_fill_manual(values=site_colors)+
-            theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
-                  axis.text.y=element_text(size=12),
-                  axis.title=element_text(size=16),
-                  legend.position = "none")+
-            facet_wrap(~domain)+
-            labs(x="Site",
-                 y="Person Proportion Change")
-        }else{
-          showplot<-ggplot(filter(dc_output(),domain%in%input$dc_subdomain&site==input$sitename_dc_ln&application=="person"),
-                           aes(x=domain,y=prop_total_change))+
-            geom_bar(stat="identity",aes(fill=site))+
-            geom_errorbar(aes(ymin=q1,ymax=q3))+
-            # geom_point(aes(y=q1), shape="\U2014", size=9)+
-            # geom_point(aes(y=q3), shape="\U2014", size=9)+
-            geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
-            theme_bw()+
-            scale_fill_manual(values=site_colors)+
-            theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
-                  axis.text.y=element_text(size=12),
-                  axis.title=element_text(size=16),
-                  legend.position = "none")+
-            labs(x="Site",
-                 y="Person Proportion Change")
-        }
-      }
-    }
-    else{
-      if(length(input$dc_subdomain)==0){
-        showplot <- ggplot()+
-          geom_blank()+
-          annotate("text", label="Select a domain and specific check", x=0,y=0)+
-          theme(axis.text.x=element_blank(),
-                axis.ticks.x=element_blank(),
-                axis.text.y=element_blank(),
-                axis.ticks.y=element_blank(),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank())+
-          labs(x="",
-               y="")
-      }else if(any(input$dc_subdomain=='specialty')|any(input$dc_subdomain=='care_site')){
-        showplot <- ggplot()+
-          geom_blank()+
-          annotate("text", label="Check not applicable at person level", x=0,y=0)+
-          theme(axis.text.x=element_blank(),
-                axis.ticks.x=element_blank(),
-                axis.text.y=element_blank(),
-                axis.ticks.y=element_blank(),
-                panel.grid.major = element_blank(),
-                panel.grid.minor = element_blank())+
-          labs(x="",
-               y="")
-      }else{
-        tc_prev<-paste0('total_ct_',config('db_previous'))
-        tc_new<-paste0('total_ct_',config('db_current'))
-        # pc_prev<-paste0('total_pt_ct_', config('db_previous'))
-        #pc_new<-paste0('total_pt_ct_',config('db_current'))
-        showplot<- ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
-                                   site==input$sitename_dc&application=='person'),
-                          aes(x=site,y=prop_total_change))+
-          geom_segment(aes(x=site,xend=site,y=0,yend=prop_total_change))+
-          geom_label(aes(x=site, y=0, label=paste0("Previous Person Count: ",format(!!sym(tc_prev), big.mark = ",",scientific = FALSE))))+
-          geom_label(aes(x=site, y=prop_total_change, label=paste0("New Person Count: ",format(!!sym(tc_new), big.mark = ",",scientific = FALSE))))+
-          labs(x="Site",
-               y="Person Proportion Change")+
-          facet_wrap(~domain)+
-          theme_bw()
-      }
+    # blank plot if nothing selected
+    if(length(input$dc_subdomain)==0){
+      showplot <- ggplot()+
+        geom_blank()+
+        annotate("text", label="Select a domain and specific check", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+      # blank plot if check not applicable to person level
+    }else if(any(input$dc_subdomain=='specialty')|any(input$dc_subdomain=='care_site')){
+      showplot <- ggplot()+
+        geom_blank()+
+        annotate("text", label="Check not applicable at person level", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+      # overall (only applicable to individual site config)
+    }else if(input$sitename_dc=="total"){
+      showplot<-ggplot(filter(dc_output_all(),domain%in%input$dc_subdomain&
+                                application=='person'),
+                       aes(x=site,y=prop_total_change, fill=site))+
+        geom_bar(stat='identity')+
+        theme_bw()+
+        scale_fill_manual(values=site_colors)+
+        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16),
+              legend.position = "none")+
+        facet_wrap(~domain)+
+        labs(x="Site",
+             y="Person Proportion Change")
+      # comparison across sites
+    }else if(input$largen_toggle==2&input$comp_dc_ln==1){
+      showplot<-ggplot(filter(dc_output_all(),domain%in%input$dc_subdomain&site==input$sitename_dc&application=="person"),
+                       aes(x=domain,y=prop_total_change))+
+        geom_bar(stat="identity",aes(fill=site))+
+        geom_errorbar(aes(ymin=q1,ymax=q3))+
+        geom_point(aes(x=domain,y=median_val),shape=23,size=3)+
+        theme_bw()+
+        scale_fill_manual(values=site_colors)+
+        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16),
+              legend.position = "none")+
+        labs(x="Site",
+             y="Person Proportion Change")
+      # individual site distribution
+    }else{
+      tc_prev<-paste0('total_ct_',config('db_previous'))
+      tc_new<-paste0('total_ct_',config('db_current'))
+      # pc_prev<-paste0('total_pt_ct_', config('db_previous'))
+      #pc_new<-paste0('total_pt_ct_',config('db_current'))
+      showplot<- ggplot(filter(dc_output(),domain%in%input$dc_subdomain&
+                                 site==input$sitename_dc&application=='person'),
+                        aes(x=site,y=prop_total_change))+
+        geom_segment(aes(x=site,xend=site,y=0,yend=prop_total_change))+
+        geom_label(aes(x=site, y=0, label=paste0("Previous Person Count: ",format(!!sym(tc_prev), big.mark = ",",scientific = FALSE))))+
+        geom_label(aes(x=site, y=prop_total_change, label=paste0("New Person Count: ",format(!!sym(tc_new), big.mark = ",",scientific = FALSE))))+
+        labs(x="Site",
+             y="Person Proportion Change")+
+        facet_wrap(~domain)+
+        theme_bw()
     }
     return(showplot)
   })
@@ -694,16 +622,14 @@ shinyServer(function(input, output) {
   # overall plot
   output$dc_overall <- renderPlotly({
     if(input$sitename_dc=='total'){
-      if(input$largen_toggle==1){
-        indata <- filter(dc_output_all(), application=='rows')
-      }else{indata<-filter(dc_output_all(), site==input$sitename_dc_ln&application=='rows')}
+      indata <- filter(dc_output_all(), application=='rows')
     }else{
       indata <- filter(dc_output_all(),site==input$sitename_dc&
                          application=='rows')
     }
     tc_prev<-paste0('total_ct_',config('db_previous'))
     tc_new<-paste0('total_ct_',config('db_current'))
-    if(input$largen_toggle==1|(input$largen_toggle==2&input$sitename_dc!='total')){
+    if(input$largen_toggle==1|(input$largen_toggle==2&input$comp_dc_ln==0)){
       plt<-ggplot(indata%>%mutate(
         text=paste0("site: ",site,
                     "\ndomain: ",domain,
@@ -728,7 +654,6 @@ shinyServer(function(input, output) {
       )+
         geom_bar(aes(y=prop_total_change, fill=site), stat="identity")+
         scale_fill_manual(values=site_colors)+
-        #geom_errorbar(aes(ymin=q1, ymax=q3), width=0.01)+
         geom_linerange(aes(ymin=q1, ymax=q3))+
         geom_point(aes(y=median_val), shape=23, size=1)+
         theme_bw()+
@@ -740,10 +665,9 @@ shinyServer(function(input, output) {
     return(ggplotly(plt, tooltip="text"))
   })
 
-  # VALUE SET CONFORMANCE ------
+  ## VALUE SET CONFORMANCE ------
   output$vs_plot <- renderPlot({
     if(input$sitename_vs_conf=='total'){
-      if(input$largen_toggle==1){
       outplot<-ggplot(filter(vs_output(),!accepted_value),
                       aes(x=site, y=tot_prop, fill=vocabulary_id))+
         geom_bar(stat="identity",position="dodge")+
@@ -752,32 +676,49 @@ shinyServer(function(input, output) {
         ylim(0,1)+
         theme_bw()+
         labs(y="Proportion of Total Records",
-             title="Violating Records per Column")
-      }else{
-        outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_ln),
-                        aes(x=measurement_column))+
-          geom_bar(aes(y=prop_viol), stat="identity")+
-          geom_point(aes(y=median_val))+
-          geom_linerange(aes(ymin=q1,ymax=q3))+
+             title="Violating Records per Column")+
+        theme(axis.text.x=element_text(size=14),
+              axis.text.y=element_text(size=14),
+              axis.title.x=element_text(size=14),
+              axis.title.y=element_text(size=14))
+      }else if((input$largen_toggle==1|input$comp_vs_ln==0)&
+                nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
+        outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
+          geom_bar(stat="identity", position="dodge") +
+          geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
+                     position=position_dodge(),
+                     show.legend = FALSE)+
+          ylim(0, 1)+
           facet_wrap(~table_application, scales="free")+
           theme_bw()+
-          coord_flip()
-      }
-
-    }
-    else if(nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
-      outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
-        geom_bar(stat="identity", position="dodge") +
-        geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
-                   position=position_dodge(),
-                   show.legend = FALSE)+
-        ylim(0, 1)+
-        facet_wrap(~table_application, scales="free")+
-        theme_bw()+
-        labs(x="Column Name",
-             y="Proportion of Total Records",
-             title="Violating Records per Column")}
-    else{
+          labs(x="Column Name",
+               y="Proportion of Total Records",
+               title="Violating Records per Column")+
+          theme(axis.text.x=element_text(size=14),
+                axis.text.y=element_text(size=14),
+                axis.title.x=element_text(size=14),
+                axis.title.y=element_text(size=14))
+      }else if(input$largen_toggle==2&input$comp_vs_ln==1&
+               nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
+        outplot<-ggplot(filter(vs_output(), site==input$sitename_vs_conf)%>%
+                          mutate(text=paste0("proportion: ",round(tot_prop, 2),
+                                             "\nmedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
+                        aes(x=measurement_column, text=text))+
+          geom_bar(aes(y=tot_prop, fill=site),stat="identity")+
+          geom_linerange(aes(ymin=q1, ymax=q3))+
+          geom_point(aes(y=median_val), shape=23, size=1)+
+          facet_wrap(~table_application, scales="free")+
+          labs(x = "Column",
+               y="Proportion Violating Records")+
+          theme_bw()+
+          scale_fill_manual(values=site_colors)+
+          coord_flip()+
+          theme(legend.position = "none",
+                axis.text.x=element_text(size=14),
+                axis.text.y=element_text(size=14),
+                axis.title.x=element_text(size=14),
+                axis.title.y=element_text(size=14))
+      }else{
       outplot <- ggplot()+
         geom_blank()+
         annotate("text", label="No violations", x=0,y=0)+
@@ -804,24 +745,15 @@ shinyServer(function(input, output) {
         mutate(total_violations=format(tot_ct, big.mark=','),
                total_rows=format(total_denom_ct, big.mark=','))%>%
         select(table_application, vocabulary_id, total_violations, total_rows)
-      # filter(vc_vs_output(), check_type=='vs'&site==input$sitename_conf)%>%
-      #   group_by(site, check_type, table_application, vocabulary_id)%>%
-      #   summarise(tot_viol=as.integer(sum(tot_viol)),
-      #             tot_rows=as.integer(min(tot_rows)))%>% # denom is the same for all in group
-      #   ungroup() %>%
-      #   mutate(total_violations=format(tot_viol, big.mark=','),
-      #           total_rows=format(tot_rows, big.mark=','))%>%
-      #   select(-c(check_type, site, tot_viol, tot_rows))
     }
     else{
       outtable <- tibble(None="")
     }
     return(outtable)
   })
-  # VOCABULARY CONFORMANCE -----
+  ## VOCABULARY CONFORMANCE -----
   output$vc_overall_plot <- renderPlotly({
     if(input$sitename_vc_conf=='total'){
-      if(input$largen_toggle==1){
       plt<-ggplot(vc_output()%>%
                     mutate(text=paste0("site: ",site,
                                        "\nvocabulary: ",vocabulary_id,
@@ -832,8 +764,8 @@ shinyServer(function(input, output) {
         facet_wrap(~table_application*measurement_column)+
         theme_bw()+
         theme(axis.text.x = element_text(angle=90))
-      }else{
-        plt<-ggplot(filter(vc_output(), site==input$sitename_vc_ln)%>%
+    }else if(input$largen_toggle==2&input$comp_vc_ln==1){
+      plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                       mutate(text=paste0("proportion: ",round(prop_viol, 2),
                                          "\nmedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
                     aes(x=measurement_column, text=text))+
@@ -847,9 +779,8 @@ shinyServer(function(input, output) {
           scale_fill_manual(values=site_colors)+
           coord_flip()+
           theme(legend.position = "none")
-      }
     }else{
-      plt<-ggplot(filter(vc_output_vocablevel(), site==input$sitename_vc_conf)%>%
+      plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                     mutate(text=paste0("site: ",site,
                                        "\nvocabulary: ",vocabulary_id,
                                        "\nproportion: ",prop_viol)),
@@ -867,7 +798,7 @@ shinyServer(function(input, output) {
 
   output$vc_plot <- renderPlotly({
     if(input$sitename_vc_conf=='total'){
-      outplot<-ggplot(filter(vc_output_vocablevel(),!accepted_value)%>%
+      outplot<-ggplot(filter(vc_output(),!accepted_value)%>%
                         mutate(text=paste0("vocabulary: ",vocabulary_id,
                                            "\nproportion: ",prop_viol)),
                       aes(x=site,y=tot_prop,fill=vocabulary_id, text=text))+
@@ -877,14 +808,11 @@ shinyServer(function(input, output) {
         scale_fill_pedsn_dq()+
         theme(axis.text.x = element_text(angle=90))+
         facet_wrap(~measurement_column)
-    }else if(nrow(filter(vc_output_vocablevel(), site==input$sitename_vc_conf&!accepted_value))>0){
-      outplot<-ggplot(filter(vc_output_vocablevel(), site==input$sitename_vc_conf&!accepted_value)%>%
+    }else if(nrow(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value))>0){
+      outplot<-ggplot(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value)%>%
                         mutate(text=paste0("vocabulary: ",vocabulary_id,
                                            "\nproportion: ",prop_viol)), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id, text=text)) +
         geom_bar(stat="identity", position="dodge") +
-        # geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
-        #            position=position_dodge(width=0.9),
-        #            show.legend = FALSE)+
         ylim(0, 1)+
         facet_wrap(~table_application, scales="free")+
         scale_fill_pedsn_dq()+
@@ -910,23 +838,15 @@ shinyServer(function(input, output) {
   })
   output$vc_table <- DT::renderDT({
     if(input$sitename_vc_conf=='total'){
-      outtable <-filter(vc_output_vocablevel(), !accepted_value)%>%
+      outtable <-filter(vc_output(), !accepted_value)%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
                total_rows=format(total_denom_ct, big.mark=','))%>%
         select(site, table_application, vocabulary_id, total_violations, total_rows)
-    }else if(nrow(filter(vc_output_vocablevel(), site==input$sitename_vc_conf&!accepted_value))!=0){
-      outtable <-filter(vc_output_vocablevel(), site==input$sitename_vc_conf&!accepted_value)%>%
+    }else if(nrow(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value))!=0){
+      outtable <-filter(vc_output(), site==input$sitename_vc_conf&!accepted_value)%>%
         mutate(total_violations=format(tot_ct, big.mark=','),
                total_rows=format(total_denom_ct, big.mark=','))%>%
         select(table_application, vocabulary_id, total_violations, total_rows)
-      # outtable <- filter(vc_vs_output(), check_type=='vc'&site==input$sitename_conf)%>%
-      #   group_by(site, check_type, table_application, vocabulary_id)%>%
-      #   summarise(tot_viol=as.integer(sum(tot_viol)),
-      #             tot_rows=as.integer(min(tot_rows)))%>% # denom is the same for all in group
-      #   ungroup() %>%
-      #   mutate(total_violations=format(tot_viol, big.mark=','),
-      #          total_rows=format(tot_rows, big.mark=','))%>%
-      #   select(-c(check_type, site, tot_viol, tot_rows))
     }
     else{
       outtable <- tibble(None="")
@@ -939,10 +859,9 @@ shinyServer(function(input, output) {
     vc_vocabs_accept
   })
 
-  # UNMAPPED CONCEPTS --------
+  ## UNMAPPED CONCEPTS --------
   output$uc_overall_plot <- renderPlot({
     if(input$sitename_uc=="total"){
-      if(input$largen_toggle==1){
         outplot <- ggplot(uc_output(), aes(x = site, y = unmapped_prop, fill=site)) +
           geom_bar(stat='identity')+
           facet_wrap(~measure, scales="free_x")+
@@ -953,9 +872,9 @@ shinyServer(function(input, output) {
           scale_fill_manual(values=site_colors)+
           labs(x="Site",
                y="Proportion Unmapped Concepts")
-      }else{
-        outplot <- ggplot(filter(uc_output(),
-                                 site==input$sitename_uc_ln),
+    }else if(input$largen_toggle==2&input$comp_uc_ln==1){
+      outplot <- ggplot(filter(uc_output(),
+                                 site==input$sitename_uc),
                           aes(x = measure, y = unmapped_prop, fill=site)) +
           geom_bar(stat='identity')+
           scale_fill_manual(values=site_colors)+
@@ -967,9 +886,7 @@ shinyServer(function(input, output) {
                 legend.position="none")+
           labs(x="Site",
                y="Proportion Unmapped Concepts")
-      }
-    }
-    else{
+      }else{
       outplot <- ggplot(filter(uc_output(),site==input$sitename_uc), aes(x = measure, y = unmapped_prop, fill=site, label=unmapped_prop)) +
         geom_bar(stat='identity')+
         geom_label(fill="white")+
@@ -984,9 +901,9 @@ shinyServer(function(input, output) {
     return(outplot)
 
   })
+
   output$uc_yr_plot <- renderPlot({
     if(input$sitename_uc=="total"){
-      if(input$largen_toggle==1){
       outplot <- ggplot(filter(uc_yr_output(), year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]),
                         aes(x = year_date, y = prop_total, colour=site)) +
         geom_point()+
@@ -1001,8 +918,8 @@ shinyServer(function(input, output) {
         scale_color_manual(values=site_colors)+
         scale_x_continuous(breaks = pretty_breaks())+
         theme(legend.position = "none")
-      }else{
-       outplot <- ggplot(filter(uc_yr_output(), site==input$sitename_uc_ln,
+    }else if(input$largen_toggle==2&input$comp_uc_ln==1){
+      outplot <- ggplot(filter(uc_yr_output(), site==input$sitename_uc,
                                   year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]),
                                     aes(x = year_date)) +
           geom_ribbon(aes(ymin=q1,ymax=q3),fill="grey70")+
@@ -1018,9 +935,7 @@ shinyServer(function(input, output) {
           scale_color_manual(values=site_colors)+
           scale_x_continuous(breaks = pretty_breaks())+
          theme(legend.position = "none")
-      }
-    }
-    else{
+      }else{
       outplot <- ggplot(filter(uc_yr_output(),site==input$sitename_uc, year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]), aes(x = year_date, y = prop_total, color=site)) +
         geom_point()+
         geom_line()+
@@ -1038,8 +953,7 @@ shinyServer(function(input, output) {
   })
 
   output$uc_top_tbl <- DT::renderDT({
-    if(input$largen_toggle==2&input$sitename_uc=='total'){outtable<-data.frame()}
-    else if(input$sitename_uc=="total"){
+    if(input$sitename_uc=="total"){
       outtable <- uc_top_output_overall()%>%
         select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
     }else{
@@ -1047,10 +961,9 @@ shinyServer(function(input, output) {
         select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
     }
     return(outtable)
-  }
-  )
+  })
 
-  # PERSON FACTS/RECORDS ------
+  ## PERSON FACTS/RECORDS ------
   ### barplot
 
   output$pf_mappings <- DT::renderDT(
@@ -1061,7 +974,7 @@ shinyServer(function(input, output) {
     )
   )
   output$pf_overall_bysite_plot <- renderPlot({
-    if(input$sitename_pf=="total"&input$largen_toggle==1){
+    if(input$sitename_pf=="total"){
       outplot <- ggplot()+
         geom_blank()+
         annotate("text", label="Select a site", x=0,y=0)+
@@ -1073,10 +986,8 @@ shinyServer(function(input, output) {
               panel.grid.minor = element_blank())+
         labs(x="",
              y="")
-    }
-    else{
-      if(input$largen_toggle==1){plotdat<-filter(pf_output(),site==input$sitename_pf)
-      }else{plotdat<-filter(pf_output(),site==input$sitename_pf_ln)}
+    }else{
+      plotdat<-filter(pf_output(),site==input$sitename_pf)
       outplot <- ggplot(plotdat,
                         aes(x=check_desc_neat, y = fact_visits_prop, label=fact_visits_prop, fill=site)) +
         geom_bar(stat='identity')+
@@ -1098,7 +1009,6 @@ shinyServer(function(input, output) {
   ### heatmap (individual sites) or bar plot (large n)
   output$pf_overall_heat_plot <- renderPlotly({
     if(input$sitename_pf=="total"){
-      if(input$largen_toggle==1){
         outplot <- ggplot(pf_output()%>%
                             mutate(text=paste0("site: ",site,
                                                "\ncheck: ",check_desc_neat,
@@ -1112,8 +1022,9 @@ shinyServer(function(input, output) {
                fill="Proportion Patients\nwith Fact")+
           facet_wrap(~visit_type, scales = "free_x")+
           scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
-      }else{
-        outplot<-ggplot(pf_output()%>%filter(site==input$sitename_pf_ln)%>%
+        # large n, comparison
+    }else if(input$largen_toggle==2&input$comp_pf_ln==1){
+        outplot<-ggplot(pf_output()%>%filter(site==input$sitename_pf)%>%
                           mutate(text=paste0("\nprop. patients: ",fact_pts_prop,
                                              "\nprop. visits: ",fact_visits_prop,
                                              "\nprop. patients median (Q1, Q3): ", round(median_val_pts,2), " (",round(q1_pts,2), ", ", round(q3_pts,2), ")",
@@ -1128,9 +1039,7 @@ shinyServer(function(input, output) {
           coord_flip()+
           labs(x="Fact Type",y="Proportion Patients with Fact")+
           theme(legend.position="none")
-      }
-    }
-    else{
+      }else{
       outplot <- ggplot(filter(pf_output(),site==input$sitename_pf)%>%
                           mutate(text=paste0("site: ",site,
                                              "\ncheck: ",check_desc_neat,
@@ -1147,7 +1056,7 @@ shinyServer(function(input, output) {
     return(ggplotly(outplot, tooltip="text"))
   })
 
-  # BEST MAPPED CONCEPTS --------
+  ## BEST MAPPED CONCEPTS --------
   output$bmc_overall_plot <- renderPlotly({
     if(input$sitename_bmc=="total"){
       # individual sites, overall
@@ -1197,7 +1106,7 @@ shinyServer(function(input, output) {
     }
     return(ggplotly(outplot,tooltip="text"))
   })
-  # FACTS OVER TIME -----
+  ## FACTS OVER TIME -----
   ### overall plot
   output$fot_summary_plot <- renderPlotly({
     if(input$largen_toggle==1){
@@ -1310,7 +1219,7 @@ shinyServer(function(input, output) {
   })
 
 
-  # DOMAIN CONCORDANCE -------
+  ## DOMAIN CONCORDANCE -------
   output$dcon_overall_plot <- renderPlotly({
     if(length(input$dcon_check)==0){
       showplot <- ggplot() +
@@ -1466,7 +1375,7 @@ shinyServer(function(input, output) {
     return(ggplotly(showplot, tooltip="text"))
   })
 
-  # FACTS WITH MISSING VISIT IDS -----
+  ## FACTS WITH MISSING VISIT IDS -----
   # overall
   output$mf_visitid_overall <- renderPlot({
     if(input$largen_toggle==1){
@@ -1530,7 +1439,7 @@ shinyServer(function(input, output) {
     return(showplot)
   })
 
-  # EXPECTED CONCEPTS PRESENT -----
+  ## EXPECTED CONCEPTS PRESENT -----
   output$ecp_plot <- renderPlotly({
     if(input$largen_toggle==1){
       plt<-ggplot(ecp_output()%>%

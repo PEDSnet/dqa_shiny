@@ -33,7 +33,7 @@ plot_fot_fn <- function(data) {
     tickfont = list(color = "red"),
     overlaying = "y",
     side = "right",
-    title = "Normalized Row Count")
+    title = "Deviance Heuristic")
 
 
   data%>%
@@ -50,7 +50,7 @@ plot_fot_fn <- function(data) {
       type="scatter",
       mode="lines",
       yaxis="y2",
-      name = "Normalized",
+      name = "Deviance Heuristic",
       line=list(color='navy', dash='dot'))%>%
     layout(
       yaxis2 = ay,
@@ -236,16 +236,12 @@ shinyServer(function(input, output) {
   })
   # adjust available site name
   observeEvent(bmc_pp(), {
-    choices_new<-c("total", unique(bmc_pp()$site)%>%sort())
-    updateSelectInput(inputId = "sitename_bmc", choices=choices_new)
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(bmc_pp()$site)%>%sort())
+    }else{choices_new<-unique(filter(bmc_pp(),site!='total')$site)%>%sort()
+    }
+    updateSelectInput(inputId="sitename_bmc", choices=choices_new)
   })
-
-  ### adjust available site name for large n site comparison
-  observeEvent(bmc_pp(), {
-    choices_new<-unique((bmc_pp()%>%filter(site!='total'))$site)%>%sort()
-    updateSelectInput(inputId="sitename_bmc_ln", choices=choices_new)
-  })
-
   # find the top 5 per check/site
   bmc_pp_top <- reactive({
     bmc_pp_concepts()%>%
@@ -292,12 +288,12 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId="fot_subdomain_overall", choices=choices_new_fot)
   })
 
-  fot_output_heuristic <- reactive({results_tbl('fot_heuristic_summary_pp') %>%
-      filter(domain!='labs')%>% # remove in future versions
-      collect()%>%
-      mutate(site=case_when(config('mask_site')~site_anon,
-                            TRUE~site))
-  })
+  # fot_output_heuristic <- reactive({results_tbl('fot_heuristic_summary_pp') %>%
+  #     filter(domain!='labs')%>% # remove in future versions
+  #     collect()%>%
+  #     mutate(site=case_when(config('mask_site')~site_anon,
+  #                           TRUE~site))
+  # })
 
   # update choices for domain
   # observeEvent(fot_output_heuristic(), {
@@ -316,13 +312,8 @@ shinyServer(function(input, output) {
       collect() %>%
       filter(domain==input$fot_domain)
   })
-  fot_output_site <- reactive({res('fot_heuristic_pp') %>%
-      inner_join(res('fot_heuristic_summary_pp'),
-                 by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>%
-      inner_join(select(res('fot_output_mnth_ratio_pp'),
-                        c(row_cts, check_name, domain, site, month_end)),
-                 by = c('check_name', 'domain', 'site', 'month_end'))%>%
-      collect() %>%
+  fot_output_site <- reactive({
+      fot_output()%>%
       filter(domain==input$fot_domain,
              site==input$sitename_fot,
              check_desc%in%input$fot_subdomain_site)
@@ -366,11 +357,6 @@ shinyServer(function(input, output) {
     updateCheckboxGroupInput(inputId="dcon_check", choices=choices_new)
   })
 
-  # dcon_output_byyr <- reactive({
-  #   results_tbl(name='dcon_output_pp_byyr')%>%collect()%>%
-  #     mutate(site=case_when(config('mask_site')~site_anon,
-  #                           TRUE~site))
-  # })
   dcon_meta <- reactive({
     results_tbl('dcon_meta')%>%
       collect()%>%
@@ -381,14 +367,13 @@ shinyServer(function(input, output) {
   })
   # adjust available site names
   observeEvent(dcon_output(), {
-    choices_new<-c("total", unique(dcon_output()$site)%>%sort())
-    updateSelectInput(inputId = "sitename_dcon", choices=choices_new)
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(dcon_output()$site)%>%sort())
+    }else{choices_new<-unique(filter(dcon_output(),site!='total')$site)%>%sort()
+    }
+    updateSelectInput(inputId="sitename_dcon", choices=choices_new)
   })
-  ### adjust available site name for large n site comparison
-  observeEvent(dcon_output(), {
-    choices_new<-unique((dcon_output()%>%filter(site!='total'))$site)%>%sort()
-    updateSelectInput(inputId="sitename_dcon_ln", choices=choices_new)
-  })
+
   # descriptions of cohorts
   output$dcon_cohort_descr <- renderDT(
     DT::datatable(
@@ -1060,7 +1045,6 @@ shinyServer(function(input, output) {
   output$bmc_overall_plot <- renderPlotly({
     if(input$sitename_bmc=="total"){
       # individual sites, overall
-      if(input$largen_toggle==1){
         outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'),
                            aes(x=site, y=best_row_prop, fill=site,
                                text=round(best_row_prop,2)))+
@@ -1072,9 +1056,9 @@ shinyServer(function(input, output) {
           coord_flip()+
           theme_bw()+
           theme(legend.position="none")
-      }else{
-        # large n, overall
-        outplot <- ggplot(filter(bmc_pp(),include_new==1L&site==input$sitename_bmc_ln)%>%
+    }else if(input$largen_toggle==2&input$comp_bmc_ln==1){
+      # large n, overall
+        outplot <- ggplot(filter(bmc_pp(),include_new==1L&site==input$sitename_bmc)%>%
                             mutate(text=paste("Proportion best mapped: ",round(best_row_prop,2),
                                               "\nOverall median (Q1, Q3): ",round(median_val,2), " (",round(q1,2),", ",round(q3,2), ")")),
                           aes(x=check_desc,fill=site,text=text))+
@@ -1087,9 +1071,7 @@ shinyServer(function(input, output) {
           labs(x="Check Application",
                y="Proportion Best Mapped")+
           coord_flip()
-      }
-    }
-    else{
+      }else{
       outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc)%>%
                           mutate(include_new=case_when(include_new==0~"No",
                                                        include_new==1~"Yes")),
@@ -1235,8 +1217,7 @@ shinyServer(function(input, output) {
              y="")
     }
     else if(input$sitename_dcon=='total'){
-      if(input$largen_toggle==1){
-        if(input$denom_dcon=='Overall'){
+      if(input$denom_dcon=='Overall'){
           showplot <- ggplot(filter(dcon_output(),
                                     site!='total',
                                     check_name%in%input$dcon_check,
@@ -1292,29 +1273,28 @@ shinyServer(function(input, output) {
             coord_flip()
         }
         # large n
-      }else{
-        showplot <- ggplot(filter(dcon_output(),
-                                  site==input$sitename_dcon_ln,
-                                  check_name%in%input$dcon_check,
-                                  cohort%in%c("cohort 1 only", "cohort 2 only", "combined")),
-                           aes(x=cohort)) +
-          geom_bar(aes(y=prop,fill=cohort,
-                       text=paste0("Cohort: ", cohort,
-                                   "\nProportion: ",round(prop,2),
-                                   "\nMedian (Q1, Q3): ",round(median_val,2), " ( ", round(q1,2), ", ", round(q3,2), ")")),
-                   stat='identity') +
-          geom_linerange(aes(ymin=q1, ymax=q3))+
-          geom_point(aes(y=median_val), shape=23, size=1)+
-          scale_fill_pedsn_dq("triset")+
-          theme_bw()+
-          theme(axis.text.x=element_text(size=12),
-                axis.text.y=element_text(size=12),
-                axis.title=element_text(size=16))+
-          labs(x="",
-               y="Proportion")+
-          facet_wrap(~check_name)+
-          coord_flip()
-      }
+    }else if(input$largen_toggle==2&input$comp_dcon_ln==1){
+      showplot <- ggplot(filter(dcon_output(),
+                                site==input$sitename_dcon,
+                                check_name%in%input$dcon_check,
+                                cohort%in%c("cohort 1 only", "cohort 2 only", "combined")),
+                         aes(x=cohort)) +
+        geom_bar(aes(y=prop,fill=cohort,
+                     text=paste0("Cohort: ", cohort,
+                                 "\nProportion: ",round(prop,2),
+                                 "\nMedian (Q1, Q3): ",round(median_val,2), " ( ", round(q1,2), ", ", round(q3,2), ")")),
+                 stat='identity') +
+        geom_linerange(aes(ymin=q1, ymax=q3))+
+        geom_point(aes(y=median_val), shape=23, size=1)+
+        scale_fill_pedsn_dq("triset")+
+        theme_bw()+
+        theme(axis.text.x=element_text(size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16))+
+        labs(x="",
+             y="Proportion")+
+        facet_wrap(~check_name)+
+        coord_flip()
     }else{
       if(input$denom_dcon=="Overall"){
         showplot <- ggplot(filter(dcon_output(),

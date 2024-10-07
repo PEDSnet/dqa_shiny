@@ -217,12 +217,12 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                                choices = NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 2 && input.sitename_bmc == 'total'",
-                                     selectInput(inputId="sitename_bmc_ln",
-                                                 label="Comparison Site",
-                                                 choices=NULL)
+                                     condition="input.largen_toggle == 2",
+                                     radioButtons(inputId="comp_bmc_ln",
+                                                  label="Comparison Type",
+                                                  choices=list("Across Sites"=1,
+                                                               "None"=0))
                                    )),
-                                 # Begin main
                                  mainPanel(
                                    fluidRow(
                                      # RxNorm
@@ -292,18 +292,19 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                                choices = NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 2 && input.sitename_dcon == 'total'",
-                                     selectInput(inputId="sitename_dcon_ln",
-                                                 label="Comparison Site",
-                                                 choices=NULL)
+                                     condition="input.largen_toggle == 2",
+                                     radioButtons(inputId="comp_dcon_ln",
+                                                  label="Comparison Type",
+                                                  choices=list("Across Sites"=1,
+                                                               "None"=0))
                                    ),
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 1 || input.sitename_dcon != 'total'",
+                                     condition="input.largen_toggle == 1 || input.comp_dcon_ln ==0",
                                      selectInput(inputId = "denom_dcon",
-                                               label = "Select Denominator",
-                                               choices = c("Overall",
-                                                           "Cohort 1",
-                                                           "Cohort 2"))),
+                                                 label = "Select Denominator",
+                                                 choices = c("Overall",
+                                                             "Cohort 1",
+                                                             "Cohort 2"))),
                                    checkboxGroupInput(inputId="dcon_check",
                                                       label="Specific Check",
                                                       choices=NULL)),

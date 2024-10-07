@@ -110,23 +110,23 @@ shinyServer(function(input, output) {
   ### pp data
   vc_output <- reactive({
     if(input$largen_toggle==1){
-    res('vc_vs_output_pp') %>% filter(check_type=='vc')%>%
+    res('vc_output_pp')%>%
       mutate(prop_viol=round(tot_prop,2))
-    }else{res('vc_vs_output_ln')%>%filter(check_type=='vc')}
+    }else{res('vc_output_ln')}
   })
   vc_output_vocablevel<-reactive({
-    res('vc_vs_output_pp')%>%filter(check_type=='vc')%>%
+    res('vc_output_pp')%>%
       mutate(prop_viol=round(tot_prop,2))
   })
   vs_output <- reactive({
     if(input$largen_toggle==1){
-      res('vc_vs_output_pp') %>% filter(check_type=='vs')%>%
+      res('vs_output_pp')%>%
         mutate(prop_viol=round(tot_prop,2))
-    }else{res('vc_vs_output_ln') %>%filter(check_type=='vs')}
+    }else{res('vs_output_ln')}
   })
 
-  vc_vs_violations <- reactive({
-    res('vc_vs_violations_pp') %>%
+  vc_violations <- reactive({
+    res('vc_violations_pp') %>%
       mutate(prop_viol=round(tot_prop,2))
   })
   ### adjust available site name
@@ -135,8 +135,8 @@ shinyServer(function(input, output) {
     choices_new<-c("total", unique(sites_w_viol$site)%>%sort())
     updateSelectInput(inputId = "sitename_vs_conf", choices=choices_new)
   })
-  observeEvent(vc_vs_violations(), {
-    choices_new<-c("total", unique(vc_vs_violations()$site)%>%sort())
+  observeEvent(vc_violations(), {
+    choices_new<-c("total", unique(vc_violations()$site)%>%sort())
     updateSelectInput(inputId = "sitename_vc_conf", choices=choices_new)
   })
   ### adjust available site name for large n comparison for vs
@@ -382,7 +382,7 @@ shinyServer(function(input, output) {
     choices_new<-unique(dcon_output()$check_name)
     updateCheckboxGroupInput(inputId="dcon_check", choices=choices_new)
   })
-  
+
   # dcon_output_byyr <- reactive({
   #   results_tbl(name='dcon_output_pp_byyr')%>%collect()%>%
   #     mutate(site=case_when(config('mask_site')~site_anon,

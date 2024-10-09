@@ -1,7 +1,7 @@
 /* font formatting */
 body {
-  background-color: whitesmoke;
-  color: #011d4e;
+  background-color: #FBF7F9;
+  color: #0D4254;
 }
 
 h4 {
@@ -26,9 +26,9 @@ ul {
 
 /* navigation panel */
 .navbar-default {
-  background-color: #011d4e;
+  background-color: #0D4254;
   font-family: 'Impact';
-  color: #D4C5C7;
+  color: #FBF7F9;
 }
 
 /*
@@ -63,10 +63,9 @@ ul {
 .box-header {
   font-family: 'Geneva';
   text-shadow: .5px .5px #ACACAC;
-  color: #E06739;
+  color: #935870;
 }
 
 .main-sidebar {
-  background-color: Navy;
+  background-color: #8BBBB2;
 }
-

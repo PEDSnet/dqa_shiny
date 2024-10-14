@@ -65,8 +65,10 @@ shinyServer(function(input, output) {
   ### pp data
   dc_output_all <- reactive({
     if(input$largen_toggle==1){
-      res('dc_output_pp')%>%filter(domain!='measurement_anthro')
-    }else{res('dc_output_ln')%>%filter(domain!='measurement_anthro')}
+      res('dc_output_pp')
+        #%>%filter(domain!='measurement_anthro')
+    }else{res('dc_output_ln')#%>%filter(domain!='measurement_anthro'
+      }
   })
 
   ### adjust available site name
@@ -629,7 +631,7 @@ shinyServer(function(input, output) {
                     "\nproportion change: ",prop_total_change,
                     "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
                     "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
-        aes(x=site, y=domain, fill=prop_total_change, text=text))+
+        aes(x=site, y=domain, fill=plot_prop, text=text))+
         geom_tile()+
         scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
         guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+

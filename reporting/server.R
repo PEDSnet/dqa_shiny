@@ -61,7 +61,7 @@ plot_fot_fn <- function(data) {
 
 shinyServer(function(input, output) {
   # DATA CAPTURE -------
-  ## data cycle changes
+  ## data cycle changes -----
   ### pp data
   dc_output_all <- reactive({
     if(input$largen_toggle==1){
@@ -633,7 +633,7 @@ shinyServer(function(input, output) {
     }
     tc_prev<-paste0('total_ct_',config('db_previous'))
     tc_new<-paste0('total_ct_',config('db_current'))
-    if(input$largen_toggle==1|(input$largen_toggle==2&input$comp_dc_ln==0)){
+    if(input$largen_toggle==1){
       plt<-ggplot(indata%>%mutate(
         text=paste0("site: ",site,
                     "\ndomain: ",domain,
@@ -641,6 +641,21 @@ shinyServer(function(input, output) {
                     "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
                     "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
         aes(x=site, y=domain, fill=plot_prop, text=text))+
+        geom_tile()+
+        scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
+        guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
+        theme_bw()+
+        theme(axis.text.y= element_text(hjust=1,size=9),
+              axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
+              axis.title=element_text(size=16))
+    }else if(input$largen_toggle==2&input$comp_dc_ln==0){
+      plt<-ggplot(indata%>%mutate(
+        text=paste0("site: ",site,
+                    "\ndomain: ",domain,
+                    "\nproportion change: ",prop_total_change,
+                    "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
+                    "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
+        aes(x=site, y=domain, fill=prop_total_change, text=text))+
         geom_tile()+
         scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
         guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+

@@ -113,33 +113,14 @@ shinyServer(function(input, output) {
   })
 
 
-  # vocabulary and valueset conformance ------------
-  ### pp data
+  # vocabulary conformance ------------
   vc_output <- reactive({
     if(input$largen_toggle==1){
-    res('vc_vs_output_pp') %>% filter(check_type=='vc')%>%
+    res('vc_output_pp') %>%
       mutate(prop_viol=round(tot_prop,2))
-    }else{res('vc_vs_output_ln')%>%filter(check_type=='vc')}
-  })
-  vs_output <- reactive({
-    if(input$largen_toggle==1){
-      res('vc_vs_output_pp') %>% filter(check_type=='vs')%>%
-        mutate(prop_viol=round(tot_prop,2))
-    }else{res('vc_vs_output_ln') %>%filter(check_type=='vs')}
+    }else{res('vc_output_ln')}
   })
 
-  vc_vs_violations <- reactive({
-    res('vc_vs_violations_pp') %>%
-      mutate(prop_viol=round(tot_prop,2))
-  })
-  ### adjust available site name
-  observeEvent(vs_output(), {
-    if(input$largen_toggle==1){
-      choices_new<-c("total",unique(vs_output()$site)%>%sort())
-    }else{choices_new<-unique(filter(vs_output(),site!='total')$site)%>%sort()
-    }
-    updateSelectInput(inputId="sitename_vs_conf", choices=choices_new)
-  })
   ### adjust available site name
   observeEvent(vc_output(), {
     if(input$largen_toggle==1){
@@ -149,12 +130,38 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId="sitename_vc_conf", choices=choices_new)
   })
 
+  vc_vocablevel<-reactive({
+    vc_output()%>%select(site, site_rl)%>%
+      inner_join(res('vc_output_pp')%>%select(-site), by = 'site_rl')
+  })
+
   ### acceptable vocabularies for vc
   vc_vocabs_accept <- results_tbl('dqa_check_metadata') %>%
     filter(check_type=='Vocabulary Conformance')%>%
     collect()%>%
     mutate(acceptable_vocabulary=gsub(".*:","",full_description))%>%
     select(check_domain, check_application, acceptable_vocabulary)
+
+
+  # valueset conformance ---------
+  vs_output <- reactive({
+    if(input$largen_toggle==1){
+      res('vs_output_pp') %>%
+        mutate(prop_viol=round(tot_prop,2))
+    }else{res('vs_output_ln')}
+  })
+  ### adjust available site name
+  observeEvent(vs_output(), {
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(vs_output()$site)%>%sort())
+    }else{choices_new<-unique(filter(vs_output(),site!='total')$site)%>%sort()
+    }
+    updateSelectInput(inputId="sitename_vs_conf", choices=choices_new)
+  })
+  vs_vocablevel<-reactive({
+    res('vs_output_pp')%>%
+      mutate(prop_viol=round(tot_prop,2))
+  })
 
   # unmapped concepts -----
   ### pp data
@@ -609,7 +616,20 @@ shinyServer(function(input, output) {
       indata <- filter(dc_output_all(),site==input$sitename_dc&
                          application=='rows')
     }
-    if(input$largen_toggle==1|(input$largen_toggle==2&input$comp_dc_ln==0)){
+    if(input$largen_toggle==1){
+      plt<-ggplot(indata%>%mutate(
+        text=paste0("site: ",site,
+                    "\ndomain: ",domain,
+                    "\nproportion change: ",prop_total_change)),
+        aes(x=site, y=domain, fill=plot_prop, text=text))+
+        geom_tile()+
+        scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
+        guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
+        theme_bw()+
+        theme(axis.text.y= element_text(hjust=1,size=9),
+              axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
+              axis.title=element_text(size=16))
+    }else if(input$largen_toggle==2&input$comp_dc_ln==0){
       plt<-ggplot(indata%>%mutate(
         text=paste0("site: ",site,
                     "\ndomain: ",domain,
@@ -661,7 +681,7 @@ shinyServer(function(input, output) {
               axis.title.x=element_text(size=14),
               axis.title.y=element_text(size=14))
       # individual site or no comparison
-      }else if((input$largen_toggle==1|input$comp_vs_ln==0)&
+      }else if(input$largen_toggle==1&
                nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
       outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
         geom_bar(stat="identity", position="dodge") +
@@ -678,8 +698,24 @@ shinyServer(function(input, output) {
               axis.text.y=element_text(size=14),
               axis.title.x=element_text(size=14),
               axis.title.y=element_text(size=14))
+      }else if(input$largen_toggle==2&input$comp_vs_ln==0&nrow(filter(vs_output(), site==input$sitename_vs_conf&prop_viol>0))>0){
+        outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&prop_viol>0), aes(x=measurement_column, y = prop_viol, fill = measurement_column)) +
+          geom_bar(stat="identity", position="dodge") +
+          geom_label(aes(x=measurement_column, y=prop_viol, label=round(prop_viol,3)),
+                     position=position_dodge(),
+                     show.legend = FALSE)+
+          ylim(0, 1)+
+          facet_wrap(~table_application, scales="free")+
+          theme_bw()+
+          labs(x="Column Name",
+               y="Proportion of Total Records",
+               title="Violating Records per Column")+
+          theme(axis.text.x=element_text(size=14),
+                axis.text.y=element_text(size=14),
+                axis.title.x=element_text(size=14),
+                axis.title.y=element_text(size=14))
       }else if(input$largen_toggle==2&input$comp_vs_ln==1&
-               nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
+               nrow(filter(vs_output(), site==input$sitename_vs_conf&prop_viol>0))>0){
         outplot<-ggplot(filter(vs_output(), site==input$sitename_vs_conf)%>%
                       mutate(text=paste0("proportion: ",round(prop_viol, 2),
                                          "\nmedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
@@ -734,14 +770,13 @@ shinyServer(function(input, output) {
           geom_bar(aes(y=prop_viol, fill=site),stat="identity")+
           geom_linerange(aes(ymin=q1, ymax=q3))+
           geom_point(aes(y=median_val), shape=23, size=1)+
-          facet_wrap(~table_application, scales="free_y")+
           labs(x = "Column",
                y="Proportion Violating Records")+
           theme_bw()+
           scale_fill_manual(values=site_colors)+
           coord_flip()+
           theme(legend.position = "none")
-     }else{
+     }else if(input$largen_toggle==1){
       plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                     mutate(text=paste0("site: ",site,
                                        "\nvocabulary: ",vocabulary_id,
@@ -753,6 +788,17 @@ shinyServer(function(input, output) {
         theme(axis.text.x = element_text(angle=90))+
         labs(x="Column",
              y="Proportion of Records")
+     }else{
+       plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
+                     mutate(text=paste0("site: ",site,
+                                        "\nproportion: ",prop_viol)),
+                   aes(x=measurement_column,y=prop_viol, fill=measurement_column, text=text))+
+         geom_bar(stat="identity",position="stack")+
+         theme_bw()+
+         scale_fill_pedsn_dq()+
+         theme(axis.text.x = element_text(angle=90))+
+         labs(x="Column",
+              y="Proportion of Records")
     }
     ggplotly(plt, tooltip="text")
   })
@@ -770,7 +816,7 @@ shinyServer(function(input, output) {
         scale_fill_pedsn_dq()+
         theme(axis.text.x = element_text(angle=90))+
         facet_wrap(~measurement_column)
-    }else if(nrow(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value))>0){
+    }else if(input$largen_toggle==1&nrow(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value))>0){
       outplot<-ggplot(filter(vc_output(), site==input$sitename_vc_conf&!accepted_value)%>%
                         mutate(text=paste0("vocabulary: ",vocabulary_id,
                                            "\nproportion: ",prop_viol)), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id, text=text)) +
@@ -782,8 +828,19 @@ shinyServer(function(input, output) {
         labs(x="Column Name",
              y="Proportion of Total Records",
              title="Violating Records per Column")
-    }
-    else{
+    }else if(input$largen_toggle==2&nrow(filter(vc_vocablevel(),site==input$sitename_vc_conf&!accepted_value))>0){
+      outplot<-ggplot(filter(vc_vocablevel(), site==input$sitename_vc_conf&!accepted_value)%>%
+                        mutate(text=paste0("vocabulary: ",vocabulary_id,
+                                           "\nproportion: ",tot_prop)), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id, text=text)) +
+        geom_bar(stat="identity", position="dodge") +
+        ylim(0, 1)+
+        facet_wrap(~table_application, scales="free")+
+        scale_fill_pedsn_dq()+
+        theme_bw()+
+        labs(x="Column Name",
+             y="Proportion of Total Records",
+             title="Violating Records per Column")
+     }else{
       outplot <- ggplot()+
         geom_blank()+
         annotate("text", label="No violations", x=0,y=0)+

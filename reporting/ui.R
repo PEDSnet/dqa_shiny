@@ -207,6 +207,9 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    selectInput(inputId = "sitename_bmc",
                                                label = "Institution",
                                                choices = NULL),
+                                   checkboxGroupInput(inputId="bmc_check",
+                                                      label="Specific Check",
+                                                      choices=NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
@@ -221,7 +224,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                      # RxNorm
                                      box(title="Best Mapped Concept Proportions",
                                          #plotlyOutput("bmc_rxnorm_overall_plot"))
-                                         plotlyOutput("bmc_overall_plot", height=750, width=1000)),
+                                         plotlyOutput("bmc_overall_plot", height=500, width=1000)),
                                      tabBox(width=12,
                                             tabPanel("Concepts Considered Best",
                                                      "For each of the checks in the table below, the concepts listed are considered the best level to map to",
@@ -338,7 +341,10 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                  sidebarPanel(
                                    selectInput(inputId="sitename_ecp",
                                                label="Institution",
-                                               choices = NULL)),
+                                               choices = NULL),
+                                   checkboxGroupInput(inputId="ecp_check",
+                                                      label="Concept Group",
+                                                      choices=NULL)),
                                  # Begin main
                                  mainPanel(
                                    fluidRow(

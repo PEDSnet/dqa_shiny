@@ -296,7 +296,10 @@ shinyServer(function(input, output) {
     bmc_pp_top()%>%
       mutate(row_proportions=round(row_proportions,2))
   })
-
+  observeEvent(bmc_pp(), {
+    choices_new<-unique(bmc_pp()$check_desc)
+    updateCheckboxGroupInput(inputId="bmc_check", choices=choices_new)
+  })
 
   # facts over time ------
   # capture data
@@ -431,6 +434,10 @@ shinyServer(function(input, output) {
   observeEvent(ecp_output(), {
     choices_new<-unique(filter(ecp_output(),site!='total')$site)%>%sort()
     updateSelectInput(inputId="sitename_ecp", choices=choices_new)
+  })
+  observeEvent(ecp_output(), {
+    choices_new<-unique(ecp_output()$concept_group)
+    updateCheckboxGroupInput(inputId="ecp_check", choices=choices_new)
   })
 
 
@@ -1053,8 +1060,20 @@ shinyServer(function(input, output) {
 
   # BEST MAPPED CONCEPTS --------
   output$bmc_overall_plot <- renderPlotly({
-    if(input$sitename_bmc=="total"){
-      outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'),
+    if(length(input$bmc_check)==0){
+      outplot<-ggplot()+
+        geom_blank()+
+        annotate("text", label="Select specific check/s", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(input$sitename_bmc=="total"){
+      outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'&check_desc%in%input$bmc_check),
                            aes(x=site, y=best_row_prop, fill=site,
                                text=round(best_row_prop,2)))+
           geom_bar(stat='identity')+
@@ -1067,7 +1086,7 @@ shinyServer(function(input, output) {
           theme(legend.position="none")
       }else if(input$largen_toggle==2&input$comp_bmc_ln==1){
         # large n, overall
-        outplot <- ggplot(filter(bmc_pp(),include_new==1L&site==input$sitename_bmc)%>%
+        outplot <- ggplot(filter(bmc_pp(),include_new==1L&site==input$sitename_bmc&check_desc%in%input$bmc_check)%>%
                             mutate(text=paste("Proportion best mapped: ",round(best_row_prop,2),
                                               "\nOverall median (Q1, Q3): ",round(median_val,2), " (",round(q1,2),", ",round(q3,2), ")")),
                           aes(x=check_desc,fill=site,text=text))+
@@ -1081,7 +1100,7 @@ shinyServer(function(input, output) {
                y="Proportion Best Mapped")+
           coord_flip()
       }else{
-      outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc)%>%
+      outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc&check_desc%in%input$bmc_check)%>%
                           mutate(include_new=case_when(include_new==0~"No",
                                                        include_new==1~"Yes")),
                         aes(x=check_desc, y=best_row_prop, fill=include_new, text=paste0("Proportion ",include_new, ": ", round(best_row_prop,2),
@@ -1435,8 +1454,21 @@ shinyServer(function(input, output) {
 
   # EXPECTED CONCEPTS PRESENT -----
   output$ecp_plot <- renderPlotly({
-    if(input$largen_toggle==1){
+    if(length(input$ecp_check)==0){
+      plt<-ggplot()+
+        geom_blank()+
+        annotate("text", label="Select concept group/s", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(input$largen_toggle==1){
       plt<-ggplot(ecp_output()%>%
+                    filter(concept_group%in%input$ecp_check)%>%
                     mutate(text=paste0("site: ",site,
                                        "\nproportion: ",round(prop_with_concept,2))),
                   aes(x=site, y=prop_with_concept, fill=site, text=text))+
@@ -1450,7 +1482,7 @@ shinyServer(function(input, output) {
         coord_flip()
     }else{
       plt<-ggplot(ecp_output()%>%
-                    filter(site==input$sitename_ecp)%>%
+                    filter(site==input$sitename_ecp&concept_group%in%input$ecp_check)%>%
                     mutate(text=paste0("Concept group: ",concept_group,
                                        "\nProportion with concept: ", round(prop_with_concept,2),
                                        "\nMedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
@@ -1469,7 +1501,7 @@ shinyServer(function(input, output) {
     ggplotly(plt, tooltip="text")
   })
   output$ecp_plot_site <- renderPlot({
-    ggplot(filter(ecp_output(), site==input$sitename_ecp),
+    ggplot(filter(ecp_output(), site==input$sitename_ecp&concept_group%in%input$ecp_check),
            aes(x=concept_group, y=round(prop_with_concept, 2), fill=site))+
       geom_bar(stat="identity")+
       geom_label(aes(x=concept_group, y=round(prop_with_concept, 2), label=round(prop_with_concept, 2)),

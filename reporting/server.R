@@ -105,12 +105,13 @@ shinyServer(function(input, output) {
   ### pp data
   vc_output <- reactive({
     if(input$largen_toggle==1){
-    res('vc_output_pp')%>%
-      mutate(prop_viol=round(tot_prop,2))
+    res('vc_output_pp_v56test')%>%
+      mutate(prop_viol=round(tot_prop,2),
+             tot_dist_concept_prop=round(tot_dist_concept_prop,2))
     }else{res('vc_output_ln')}
   })
   vc_vocablevel<-reactive({
-    res('vc_output_pp')%>%
+    res('vc_output_pp_v56test')%>%
       mutate(prop_viol=round(tot_prop,2))
   })
   # vc_violations <- reactive({
@@ -790,6 +791,7 @@ shinyServer(function(input, output) {
   ## VOCABULARY CONFORMANCE -----
   output$vc_overall_plot <- renderPlotly({
     if(input$sitename_vc_conf=='total'){
+      if(input$largen_toggle==1&input$vc_denom==1){
       plt<-ggplot(vc_output()%>%
                     mutate(text=paste0("site: ",site,
                                        "\nvocabulary: ",vocabulary_id,
@@ -800,6 +802,18 @@ shinyServer(function(input, output) {
         facet_wrap(~table_application*measurement_column)+
         theme_bw()+
         theme(axis.text.x = element_text(angle=90))
+      }else if(input$largen_toggle==1&input$vc_denom==2){
+        plt<-ggplot(vc_output()%>%
+                      mutate(text=paste0("site: ",site,
+                                         "\nvocabulary: ",vocabulary_id,
+                                         "\nproportion: ",tot_dist_concept_prop)),
+                    aes(x=site,y=tot_dist_concept_prop, fill=vocabulary_id, text=text))+
+          geom_bar(stat="identity",position="stack")+
+          scale_fill_pedsn_dq()+
+          facet_wrap(~table_application*measurement_column)+
+          theme_bw()+
+          theme(axis.text.x = element_text(angle=90))
+      }
     }else if(input$largen_toggle==2&input$comp_vc_ln==1){
       plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                       mutate(text=paste0("proportion: ",round(prop_viol, 2),
@@ -826,6 +840,7 @@ shinyServer(function(input, output) {
              y="Proportion Violating Records")+
         theme(legend.position="none")
     }else{
+      if(input$vc_denom==1){
       plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                     mutate(text=paste0("site: ",site,
                                        "\nvocabulary: ",vocabulary_id,
@@ -837,6 +852,19 @@ shinyServer(function(input, output) {
         theme(axis.text.x = element_text(angle=90))+
         labs(x="Column",
              y="Proportion of Records")
+      }else if(input$vc_denom==2){
+        plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
+                      mutate(text=paste0("site: ",site,
+                                         "\nvocabulary: ",vocabulary_id,
+                                         "\nproportion: ",tot_dist_concept_prop)),
+                    aes(x=measurement_column,y=tot_dist_concept_prop, fill=vocabulary_id, text=text))+
+          geom_bar(stat="identity",position="stack")+
+          theme_bw()+
+          scale_fill_pedsn_dq()+
+          theme(axis.text.x = element_text(angle=90))+
+          labs(x="Column",
+               y="Proportion of Records")
+      }
     }
     ggplotly(plt, tooltip="text")
   })

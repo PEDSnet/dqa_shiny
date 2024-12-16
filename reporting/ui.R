@@ -49,6 +49,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                         DT::dataTableOutput("dt_descriptions")
                       ))),
            navbarMenu(title="Check Type", icon=icon("chart-area"),
+                      # DC ----
                       tabPanel("Data Cycle Changes (DC)",
                                sidebarLayout(
                                  sidebarPanel(
@@ -72,7 +73,6 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
-                                     # DC changes - site comparison
                                      box(title="Overall Data Cycle Changes",
                                          plotlyOutput("dc_overall", height=500, width=1000)),
                                      box(title="Domain-Specific Data Cycle Changes (Records)",width=12,
@@ -85,6 +85,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  )#mainPanel
                                )#sidebarlayout
                       ),#tabpanel for changes between data cycles
+                      # VS ----
                       tabPanel("Valueset Conformance",
                                sidebarLayout(
                                  sidebarPanel(
@@ -108,12 +109,18 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                      )
                                  )
                                )),
+                      # VC ----
                       tabPanel("Vocabulary Conformance",
                                sidebarLayout(
                                  sidebarPanel(
                                    selectInput(inputId="sitename_vc_conf",
                                                label="Institution",
                                                choices=NULL),
+                                   conditionalPanel("input.largen_toggle == 1",
+                                                    radioButtons(inputId="vc_denom",
+                                                                 label="Overall Vocabularies View",
+                                                                 choices=list("Row-level"=1,
+                                                                              "Concept-level"=2))),
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
                                      radioButtons(inputId="comp_vc_ln",
@@ -139,6 +146,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  )#mainpanel
                                )#sidebarlayout
                       ),#tabpanel
+                      # UC ----
                       tabPanel("Unmapped Concepts",
                                sidebarLayout(
                                  sidebarPanel(
@@ -179,6 +187,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
 
                                )#sidebarlayout
                       ),
+                      # PF ----
                       tabPanel("Person Facts/Records",
                                sidebarLayout(
                                  sidebarPanel(
@@ -209,6 +218,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
 
                                )#sidebarlayout
                       ),#tabpanel
+                      # BMC ----
                       tabPanel("Best Mapped Concepts",
                                sidebarLayout(
                                  sidebarPanel(
@@ -247,6 +257,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
 
                                )#sidebarlayout
                       ),
+                      # FOT ----
                       tabPanel("Facts Over Time",
                                sidebarLayout(
                                  sidebarPanel(
@@ -287,6 +298,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  )#mainPanel
                                )#sidebarlayout
                       ),#tab panel fot
+                      # DCON ----
                       tabPanel("Domain Concordance",
                                sidebarLayout(
                                  sidebarPanel(
@@ -324,6 +336,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  )#mainPanel
                                )#sidebarlayout
                       ),#tab panel fot
+                      # MF ----
                       tabPanel("Facts with Associated Visit ID",
                                sidebarLayout(
                                  sidebarPanel(
@@ -344,6 +357,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  )#mainPanel
                                )#sidebarlayout
                       ),
+                      # ECP ----
                       tabPanel("Expected Concepts Present",
                                sidebarLayout(
                                  sidebarPanel(

@@ -105,13 +105,13 @@ shinyServer(function(input, output) {
   ### pp data
   vc_output <- reactive({
     if(input$largen_toggle==1){
-    res('vc_output_pp_v56test')%>%
+    res('vc_output_pp')%>%
       mutate(prop_viol=round(tot_prop,2),
              tot_dist_concept_prop=round(tot_dist_concept_prop,2))
     }else{res('vc_output_ln')}
   })
   vc_vocablevel<-reactive({
-    res('vc_output_pp_v56test')%>%
+    res('vc_output_pp')%>%
       mutate(prop_viol=round(tot_prop,2))
   })
   # vc_violations <- reactive({
@@ -438,7 +438,7 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId="sitename_ecp", choices=choices_new)
   })
   observeEvent(ecp_output(), {
-    choices_new<-unique(ecp_output()$concept_group)
+    choices_new<-unique(ecp_output()$concept_group)%>%sort()
     updateCheckboxGroupInput(inputId="ecp_check", choices=choices_new)
   })
 

@@ -783,6 +783,16 @@ shinyServer(function(input, output) {
           scale_fill_manual(values=site_colors)+
           coord_flip()+
           theme(legend.position = "none")
+      }else if(input$largen_toggle==2&input$comp_vc_ln==0){
+        plt<-ggplot(filter(vc_output(),site==input$sitename_vc_conf)%>%
+                      mutate(text=paste0("proportion with violation: ",round(prop_viol,3))))+
+          geom_bar(aes(x=measurement_column,y=prop_viol,fill=site, text=text), stat="identity")+
+          theme_bw()+
+          scale_fill_manual(values=site_colors)+
+          coord_flip()+
+          labs(x = "Column",
+               y="Proportion Violating Records")+
+          theme(legend.position="none")
      }else if(input$largen_toggle==1){
       plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                     mutate(text=paste0("site: ",site,

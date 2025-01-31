@@ -120,9 +120,9 @@ config('retain_intermediates', NA)
 config('results_schema', 'dqa_rox')
 
 #' Current database version
-config('db_current', 'v55')
+config('db_current', 'v56')
 #' Previous database version
-config('db_previous', 'v54')
+config('db_previous', 'v55')
 
 #' Determine whether actual site names or masked identifiers
 #' should be shown on the app

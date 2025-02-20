@@ -202,6 +202,10 @@ shinyServer(function(input, output) {
     }
     updateSelectInput(inputId="sitename_uc", choices=choices_new)
   })
+  observeEvent(uc_output(), {
+    choices_new<-unique(uc_output()$measure)%>%sort()
+    updateCheckboxGroupInput(inputId="uc_measure", choices=choices_new)
+  })
 
   ## person facts/records -------
   ### capture data
@@ -949,8 +953,21 @@ shinyServer(function(input, output) {
 
   ## UNMAPPED CONCEPTS --------
   output$uc_overall_plot <- renderPlot({
-    if(input$sitename_uc=="total"){
-        outplot <- ggplot(uc_output(), aes(x = site, y = unmapped_prop, fill=site)) +
+    if(length(input$uc_measure)==0){
+      outplot<-ggplot()+
+        geom_blank()+
+        annotate("text", label="Select specific measure/s", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(input$sitename_uc=="total"){
+        outplot <- ggplot(uc_output()%>%filter(measure%in%input$uc_measure),
+                          aes(x = site, y = unmapped_prop, fill=site)) +
           geom_bar(stat='identity')+
           facet_wrap(~measure, scales="free_x")+
           theme_bw()+
@@ -962,7 +979,8 @@ shinyServer(function(input, output) {
                y="Proportion Unmapped Concepts")
     }else if(input$largen_toggle==2&input$comp_uc_ln==1){
       outplot <- ggplot(filter(uc_output(),
-                                 site==input$sitename_uc),
+                                 site==input$sitename_uc&
+                                 measure%in%input$uc_measure),
                           aes(x = measure, y = unmapped_prop, fill=site)) +
           geom_bar(stat='identity')+
           scale_fill_manual(values=site_colors)+
@@ -975,7 +993,10 @@ shinyServer(function(input, output) {
           labs(x="Site",
                y="Proportion Unmapped Concepts")
       }else{
-      outplot <- ggplot(filter(uc_output(),site==input$sitename_uc), aes(x = measure, y = unmapped_prop, fill=site, label=unmapped_prop)) +
+      outplot <- ggplot(filter(uc_output(),
+                               site==input$sitename_uc&
+                                 measure%in%input$uc_measure),
+                        aes(x = measure, y = unmapped_prop, fill=site, label=unmapped_prop)) +
         geom_bar(stat='identity')+
         geom_label(fill="white")+
         theme_bw()+
@@ -991,8 +1012,23 @@ shinyServer(function(input, output) {
   })
 
   output$uc_yr_plot <- renderPlot({
-    if(input$sitename_uc=="total"){
-      outplot <- ggplot(filter(uc_yr_output(), year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]),
+    if(length(input$uc_measure)==0){
+      outplot<-ggplot()+
+        geom_blank()+
+        annotate("text", label="Select specific measure/s", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(input$sitename_uc=="total"){
+      outplot <- ggplot(filter(uc_yr_output(),
+                               year_date>=input$date_uc_range[1],
+                               year_date<=input$date_uc_range[2],
+                               unmapped_description%in%input$uc_measure),
                         aes(x = year_date, y = prop_total, colour=site)) +
         geom_point()+
         geom_line()+
@@ -1004,11 +1040,12 @@ shinyServer(function(input, output) {
               axis.text.y = element_text(size=12),
               axis.title=element_text(size=18))+
         scale_color_manual(values=site_colors)+
-        scale_x_continuous(breaks = pretty_breaks())+
-        theme(legend.position = "none")
+        scale_x_continuous(breaks = pretty_breaks())
     }else if(input$largen_toggle==2&input$comp_uc_ln==1){
       outplot <- ggplot(filter(uc_yr_output(), site==input$sitename_uc,
-                                  year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]),
+                                  year_date>=input$date_uc_range[1],
+                               year_date<=input$date_uc_range[2],
+                               unmapped_description%in%input$uc_measure),
                                     aes(x = year_date)) +
           geom_ribbon(aes(ymin=q1,ymax=q3),fill="grey70")+
          geom_line(aes(y=median_val), linetype="dotted")+
@@ -1024,7 +1061,12 @@ shinyServer(function(input, output) {
           scale_x_continuous(breaks = pretty_breaks())+
          theme(legend.position = "none")
       }else{
-      outplot <- ggplot(filter(uc_yr_output(),site==input$sitename_uc, year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]), aes(x = year_date, y = prop_total, color=site)) +
+      outplot <- ggplot(filter(uc_yr_output(),
+                               site==input$sitename_uc,
+                               year_date>=input$date_uc_range[1],
+                               year_date<=input$date_uc_range[2],
+                               unmapped_description%in%input$uc_measure),
+                        aes(x = year_date, y = prop_total, color=site)) +
         geom_point()+
         geom_line()+
         facet_wrap(~unmapped_description, scales="free") +
@@ -1035,17 +1077,18 @@ shinyServer(function(input, output) {
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=12),
               axis.text.y = element_text(size=12),
               axis.title=element_text(size=18))+
-        scale_x_continuous(breaks=pretty_breaks())
+        scale_x_continuous(breaks=pretty_breaks())+
+        theme(legend.position = "none")
     }
     return(outplot)
   })
 
   output$uc_top_tbl <- DT::renderDT({
     if(input$sitename_uc=="total"){
-      outtable <- uc_top_output_overall()%>%
+      outtable <- filter(uc_top_output_overall(),unmapped_description%in%input$uc_measure)%>%
         select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
     }else{
-      outtable <- filter(uc_top_output(), site==input$sitename_uc) %>%
+      outtable <- filter(uc_top_output(), site==input$sitename_uc&unmapped_description%in%input$uc_measure) %>%
         select(unmapped_description, src_value_name, src_value, src_value_ct, proportion_of_unmapped)
     }
     return(outtable)
@@ -1553,7 +1596,8 @@ shinyServer(function(input, output) {
       plt<-ggplot(ecp_output()%>%
                     filter(concept_group%in%input$ecp_check)%>%
                     mutate(text=paste0("site: ",site,
-                                       "\nproportion: ",round(prop_with_concept,2))),
+                                       "\nproportion: ",round(prop_with_concept,2),
+                                       "\ndenominator: ",cohort_denominator)),
                   aes(x=site, y=prop_with_concept, fill=site, text=text))+
         geom_bar(stat="identity")+
         scale_fill_manual(values=site_colors)+
@@ -1568,7 +1612,8 @@ shinyServer(function(input, output) {
                     filter(site==input$sitename_ecp&concept_group%in%input$ecp_check)%>%
                     mutate(text=paste0("Concept group: ",concept_group,
                                        "\nProportion with concept: ", round(prop_with_concept,2),
-                                       "\nMedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
+                                       "\nMedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")",
+                                       "\nDenominator: ",cohort_denominator)),
                   aes(x=concept_group, text=text, fill=site))+
         geom_bar(aes(y=prop_with_concept), stat="identity")+
         scale_fill_manual(values=site_colors)+

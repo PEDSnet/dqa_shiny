@@ -433,14 +433,25 @@ shinyServer(function(input, output) {
   })
 
   ## expected concepts present ---------------------
-  ecp_output <- reactive({
+  ecp_output_all<- reactive({
     if(input$largen_toggle==1){res('ecp_output_pp')}else{res('ecp_output_ln')}
   })
+  ecp_output <- reactive({
+    ecp_output_all()%>%
+      filter(check_cat==input$ecp_check_cat)
+  })
   # update choices for site name
-  observeEvent(ecp_output(), {
-    choices_new<-unique(filter(ecp_output(),site!='total')$site)%>%sort()
+  observeEvent(ecp_output_all(), {
+    choices_new<-unique(filter(ecp_output_all(),site!='total')$site)%>%sort()
     updateSelectInput(inputId="sitename_ecp", choices=choices_new)
   })
+  ### update choices for check category
+  observeEvent(ecp_output_all(), {
+    choices_new<-unique(ecp_output_all()$check_cat)%>%sort()
+    updateSelectInput(inputId="ecp_check_cat", choices=choices_new)
+  })
+
+  ### update choices for check
   observeEvent(ecp_output(), {
     choices_new<-unique(ecp_output()$concept_group)%>%sort()
     updateCheckboxGroupInput(inputId="ecp_check", choices=choices_new)

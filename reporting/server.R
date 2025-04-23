@@ -379,11 +379,26 @@ shinyServer(function(input, output) {
 
   dcon_meta <- reactive({
     results_tbl('dcon_meta')%>%
+      mutate(check_name=case_when(check_name=='dcon_flu_dx_flu_pos_lab'~'dcon_flu_pos_lab_flu_dx',
+                                  check_name=='dcon_rsv_dx_rsv_pos_lab'~'dcon_rsv_pos_lab_rsv_dx',
+                                  check_name=='dcon_flu_dx_flu_neg_lab'~'dcon_flu_neg_lab_flu_dx',
+                                  check_name=='dcon_rsv_dx_rsv_neg_lab'~'dcon_rsv_neg_lab_rsv_dx',
+                                  TRUE~check_name),
+             cohort_label=case_when(check_name%in%c('dcon_flu_pos_lab_flu_dx',
+                                                    'dcon_rsv_pos_lab_rsv_dx',
+                                                    'dcon_flu_neg_lab_flu_dx',
+                                                    'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_1'~'cohort_2',
+                                    check_name%in%c('dcon_flu_pos_lab_flu_dx',
+                                                    'dcon_rsv_pos_lab_rsv_dx',
+                                                    'dcon_flu_neg_lab_flu_dx',
+                                                    'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_2'~'cohort_1',
+                                    TRUE~cohort_label))%>%
       collect()%>%
       select(-check_type)%>%
       filter(check_name%in%input$dcon_check)%>%
       pivot_wider(names_from='cohort_label',
-                  values_from='cohort')
+                  values_from='cohort')%>%
+      select(check_name, cohort_1, cohort_2)
   })
   # adjust available site names
   observeEvent(dcon_output(), {
@@ -656,7 +671,7 @@ shinyServer(function(input, output) {
                     "\nproportion change: ",prop_total_change,
                     "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
                     "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
-        aes(x=site, y=domain, fill=plot_prop, text=text))+
+        aes(x=site, y=domain, fill=prop_total_change, text=text))+
         geom_tile()+
         scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
         guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+

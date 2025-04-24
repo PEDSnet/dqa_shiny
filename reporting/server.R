@@ -210,6 +210,10 @@ shinyServer(function(input, output) {
     }
     updateSelectInput(inputId="sitename_uc", choices=choices_new)
   })
+  observeEvent(uc_output(), {
+    choices_new<-unique(uc_output()$measure)%>%sort()
+    updateCheckboxGroupInput(inputId="uc_measure", choices=choices_new)
+  })
 
 
   # person facts/records -------
@@ -373,11 +377,26 @@ shinyServer(function(input, output) {
   })
   dcon_meta <- reactive({
     results_tbl('dcon_meta')%>%
+      mutate(check_name=case_when(check_name=='dcon_flu_dx_flu_pos_lab'~'dcon_flu_pos_lab_flu_dx',
+                                  check_name=='dcon_rsv_dx_rsv_pos_lab'~'dcon_rsv_pos_lab_rsv_dx',
+                                  check_name=='dcon_flu_dx_flu_neg_lab'~'dcon_flu_neg_lab_flu_dx',
+                                  check_name=='dcon_rsv_dx_rsv_neg_lab'~'dcon_rsv_neg_lab_rsv_dx',
+                                  TRUE~check_name),
+             cohort_label=case_when(check_name%in%c('dcon_flu_pos_lab_flu_dx',
+                                                    'dcon_rsv_pos_lab_rsv_dx',
+                                                    'dcon_flu_neg_lab_flu_dx',
+                                                    'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_1'~'cohort_2',
+                                    check_name%in%c('dcon_flu_pos_lab_flu_dx',
+                                                    'dcon_rsv_pos_lab_rsv_dx',
+                                                    'dcon_flu_neg_lab_flu_dx',
+                                                    'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_2'~'cohort_1',
+                                    TRUE~cohort_label))%>%
       collect()%>%
       select(-check_type)%>%
       filter(check_name%in%input$dcon_check)%>%
       pivot_wider(names_from='cohort_label',
-                  values_from='cohort')
+                  values_from='cohort')%>%
+      select(check_name,cohort_1,cohort_2)
   })
   # adjust available site names
   observeEvent(dcon_output(), {
@@ -427,14 +446,24 @@ shinyServer(function(input, output) {
   })
 
   # expected concepts present ---------------------
-  ecp_output <- reactive({
+  ecp_output_all <- reactive({
     if(input$largen_toggle==1){res('ecp_output_pp')}else{res('ecp_output_ln')}
   })
-  # update choices for site name
-  observeEvent(ecp_output(), {
-    choices_new<-unique(filter(ecp_output(),site!='total')$site)%>%sort()
+  ecp_output <- reactive({
+    ecp_output_all()%>%
+      filter(check_cat==input$ecp_check_cat)
+  })
+  ### update choices for site name
+  observeEvent(ecp_output_all(), {
+    choices_new<-unique(filter(ecp_output_all(),site!='total')$site)%>%sort()
     updateSelectInput(inputId="sitename_ecp", choices=choices_new)
   })
+  ### update choices for check category
+  observeEvent(ecp_output_all(), {
+    choices_new<-unique(ecp_output_all()$check_cat)%>%sort()
+    updateSelectInput(inputId="ecp_check_cat", choices=choices_new)
+  })
+  ### update choices for check
   observeEvent(ecp_output(), {
     choices_new<-unique(ecp_output()$concept_group)
     updateCheckboxGroupInput(inputId="ecp_check", choices=choices_new)
@@ -628,7 +657,7 @@ shinyServer(function(input, output) {
         text=paste0("site: ",site,
                     "\ndomain: ",domain,
                     "\nproportion change: ",prop_total_change)),
-        aes(x=site, y=domain, fill=plot_prop, text=text))+
+        aes(x=site, y=domain, fill=prop_total_change, text=text))+
         geom_tile()+
         scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
         guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
@@ -880,9 +909,22 @@ shinyServer(function(input, output) {
 
   # UNMAPPED CONCEPTS --------
   output$uc_overall_plot <- renderPlot({
-    if(input$sitename_uc=="total"){
-      outplot <- ggplot(uc_output(), aes(x = site, y = unmapped_prop, fill=site)) +
-          geom_bar(stat='identity')+
+    if(length(input$uc_measure)==0){
+      outplot<-ggplot()+
+        geom_blank()+
+        annotate("text", label="Select specific measure/s", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(input$sitename_uc=="total"){
+      outplot <- ggplot(uc_output()%>%filter(measure%in%input$uc_measure),
+                        aes(x = site, y = unmapped_prop, fill=site)) +
+        geom_bar(stat='identity')+
           facet_wrap(~measure, scales="free_x")+
           theme_bw()+
           theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size=14),
@@ -894,7 +936,8 @@ shinyServer(function(input, output) {
                y="Proportion Unmapped Concepts")
       }else if(input$largen_toggle==2&input$comp_uc_ln==1){
         outplot <- ggplot(filter(uc_output(),
-                                 site==input$sitename_uc),
+                                 site==input$sitename_uc&
+                                   measure%in%input$uc_measure),
                           aes(x = measure, y = unmapped_prop, fill=site)) +
           geom_bar(stat='identity')+
           scale_fill_manual(values=site_colors)+
@@ -907,8 +950,11 @@ shinyServer(function(input, output) {
           labs(x="Site",
                y="Proportion Unmapped Concepts")
       }else{
-      outplot <- ggplot(filter(uc_output(),site==input$sitename_uc), aes(x = measure, y = unmapped_prop, fill=site, label=unmapped_prop)) +
-        geom_bar(stat='identity')+
+        outplot <- ggplot(filter(uc_output(),
+                                 site==input$sitename_uc&
+                                   measure%in%input$uc_measure),
+                          aes(x = measure, y = unmapped_prop, fill=site, label=unmapped_prop)) +
+          geom_bar(stat='identity')+
         geom_label(fill="white")+
         theme_bw()+
         scale_fill_manual(values=site_colors)+
@@ -922,8 +968,23 @@ shinyServer(function(input, output) {
 
   })
   output$uc_yr_plot <- renderPlot({
-    if(input$sitename_uc=="total"){
-      outplot <- ggplot(filter(uc_yr_output(), year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]),
+    if(length(input$uc_measure)==0){
+      outplot<-ggplot()+
+        geom_blank()+
+        annotate("text", label="Select specific measure/s", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(input$sitename_uc=="total"){
+      outplot <- ggplot(filter(uc_yr_output(),
+                               year_date>=input$date_uc_range[1],
+                               year_date<=input$date_uc_range[2],
+                               unmapped_description%in%input$uc_measure),
                         aes(x = year_date, y = prop_total, colour=site)) +
         geom_point()+
         geom_line()+
@@ -936,11 +997,12 @@ shinyServer(function(input, output) {
               axis.title=element_text(size=18),
               strip.text = element_text(size=14))+
         scale_color_manual(values=site_colors)+
-        scale_x_continuous(breaks = pretty_breaks())+
-        theme(legend.position = "none")
+        scale_x_continuous(breaks = pretty_breaks())
       }else if(input$largen_toggle==2&input$comp_uc_ln==1){
        outplot <- ggplot(filter(uc_yr_output(), site==input$sitename_uc,
-                                  year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]),
+                                year_date>=input$date_uc_range[1],
+                                year_date<=input$date_uc_range[2],
+                                unmapped_description%in%input$uc_measure),
                                     aes(x = year_date)) +
           geom_ribbon(aes(ymin=q1,ymax=q3),fill="grey70")+
          geom_line(aes(y=median_val), linetype="dotted")+
@@ -957,7 +1019,12 @@ shinyServer(function(input, output) {
           scale_color_manual(values=site_colors)+
           scale_x_continuous(breaks = pretty_breaks())
       }else{
-      outplot <- ggplot(filter(uc_yr_output(),site==input$sitename_uc, year_date>=input$date_uc_range[1],year_date<=input$date_uc_range[2]), aes(x = year_date, y = prop_total, color=site)) +
+        outplot <- ggplot(filter(uc_yr_output(),
+                                 site==input$sitename_uc,
+                                 year_date>=input$date_uc_range[1],
+                                 year_date<=input$date_uc_range[2],
+                                 unmapped_description%in%input$uc_measure),
+                          aes(x = year_date, y = prop_total, color=site)) +
         geom_point()+
         geom_line()+
         facet_wrap(~unmapped_description, scales="free") +
@@ -970,7 +1037,8 @@ shinyServer(function(input, output) {
               axis.title=element_text(size=18),
               strip.text = element_text(size=14),
               legend.position="none")+
-        scale_x_continuous(breaks=pretty_breaks())
+        scale_x_continuous(breaks=pretty_breaks())+
+          theme(legend.position="none")
     }
     return(outplot)
   })
@@ -1480,7 +1548,8 @@ shinyServer(function(input, output) {
       plt<-ggplot(ecp_output()%>%
                     filter(concept_group%in%input$ecp_check)%>%
                     mutate(text=paste0("site: ",site,
-                                       "\nproportion: ",round(prop_with_concept,2))),
+                                       "\nproportion: ",round(prop_with_concept,2),
+                                       "\ndenominator: ",cohort_denominator)),
                   aes(x=site, y=prop_with_concept, fill=site, text=text))+
         geom_bar(stat="identity")+
         scale_fill_manual(values=site_colors)+
@@ -1495,7 +1564,8 @@ shinyServer(function(input, output) {
                     filter(site==input$sitename_ecp&concept_group%in%input$ecp_check)%>%
                     mutate(text=paste0("Concept group: ",concept_group,
                                        "\nProportion with concept: ", round(prop_with_concept,2),
-                                       "\nMedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
+                                       "\nMedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")",
+                                       "\nDenominator: ",cohort_denominator)),
                   aes(x=concept_group, text=text, fill=site))+
         geom_bar(aes(y=prop_with_concept), stat="identity")+
         scale_fill_manual(values=site_colors)+

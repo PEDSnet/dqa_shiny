@@ -8,7 +8,7 @@ library(scales)
 library(DT)
 library(tidyr)
 library(RColorBrewer)
-library(forcats)
+#library(forcats)
 
 #' Function for replacing site names with masked identifiers
 reid<-function(tbl){
@@ -38,6 +38,17 @@ res <- function(tbl_name) {
 
   reid(rslt)
 
+}
+#' Function for adding human-readable descriptions for dashboard
+add_desc<-function(tbl,
+                   join_col_name,
+                   check_type_name){
+  tbl%>%
+    left_join(read_codeset('dashboard_labels',col_types = 'ccc')%>%
+                filter(check_type==check_type_name),
+              by=setNames('old_desc',join_col_name)) %>%
+    select(-!!sym(join_col_name))%>%
+    rename({{join_col_name}}:=new_desc)
 }
 
 #' Function for plotting site-specific FOT plots
@@ -75,12 +86,22 @@ plot_fot_fn <- function(data) {
 
 shinyServer(function(input, output) {
   # DATA CAPTURE -------
+  ## glossary ----
+  glossary<-results_tbl('dqa_check_metadata')%>%
+    collect()%>%
+   ## select(-check_name)%>%
+   ## rename(check_name=new_name)%>%
+    # mutate(check_type=case_when(check_type=='Person Facts/Records'~ "Clinical Fact Documentation",
+    #                             TRUE~check_type))%>%
+    select(check_type,check_name,check_domain,full_description)
   ## data cycle changes -------
   ### pp data
   dc_output_all <- reactive({
     if(input$largen_toggle==1){
-      res('dc_output_pp')%>%filter(domain!='measurement_anthro')
-    }else{res('dc_output_ln')%>%filter(domain!='measurement_anthro')}
+      res('dc_output_pp')%>%filter(domain!='measurement_anthro')%>%
+        add_desc(.,'domain','dc')
+    }else{res('dc_output_ln')%>%filter(domain!='measurement_anthro')%>%
+        add_desc(.,'domain', 'dc')}
   })
 
   ### adjust available site name
@@ -94,7 +115,8 @@ shinyServer(function(input, output) {
 
   ### update choices for domain
   observeEvent(dc_output_all(), {
-    choices_pp<-gsub("_.*","",dc_output_all()$domain)
+   # choices_pp<-gsub("_.*","",dc_output_all()$domain)
+    choices_pp<-gsub("(\\w+).*","\\1",dc_output_all()$domain)
     choices_new<-unique(choices_pp)%>%
       sort()
     updateSelectInput(inputId="dc_domain", choices=choices_new)
@@ -368,7 +390,10 @@ shinyServer(function(input, output) {
                                             "cohort_2_denom", "cohort_1_in_2"),
                            labels=c("cohort 2 only", "combined", "cohort 1 only",
                                     "cohort 1 not 2", "cohort 2 in 1",
-                                    "cohort 2 not 1", "cohort 1 in 2")))
+                                    "cohort 2 not 1", "cohort 1 in 2"))) %>%
+      add_desc(.,
+               join_col_name='check_name',
+               check_type_name='dcon')
   })
 
   observeEvent(dcon_output(), {
@@ -377,22 +402,38 @@ shinyServer(function(input, output) {
   })
   dcon_meta <- reactive({
     results_tbl('dcon_meta')%>%
-      mutate(check_name=case_when(check_name=='dcon_flu_dx_flu_pos_lab'~'dcon_flu_pos_lab_flu_dx',
-                                  check_name=='dcon_rsv_dx_rsv_pos_lab'~'dcon_rsv_pos_lab_rsv_dx',
-                                  check_name=='dcon_flu_dx_flu_neg_lab'~'dcon_flu_neg_lab_flu_dx',
-                                  check_name=='dcon_rsv_dx_rsv_neg_lab'~'dcon_rsv_neg_lab_rsv_dx',
-                                  TRUE~check_name),
-             cohort_label=case_when(check_name%in%c('dcon_flu_pos_lab_flu_dx',
-                                                    'dcon_rsv_pos_lab_rsv_dx',
-                                                    'dcon_flu_neg_lab_flu_dx',
-                                                    'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_1'~'cohort_2',
-                                    check_name%in%c('dcon_flu_pos_lab_flu_dx',
-                                                    'dcon_rsv_pos_lab_rsv_dx',
-                                                    'dcon_flu_neg_lab_flu_dx',
-                                                    'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_2'~'cohort_1',
-                                    TRUE~cohort_label))%>%
+      mutate(
+        check_name=case_when(check_name=='dcon_flu_dx_flu_pos_lab'~'dcon_flu_pos_lab_flu_dx',
+                             check_name=='dcon_rsv_dx_rsv_pos_lab'~'dcon_rsv_pos_lab_rsv_dx',
+                             check_name=='dcon_flu_dx_flu_neg_lab'~'dcon_flu_neg_lab_flu_dx',
+                             check_name=='dcon_rsv_dx_rsv_neg_lab'~'dcon_rsv_neg_lab_rsv_dx',
+                             TRUE~check_name),
+        cohort_label=case_when(check_name%in%c('dcon_flu_pos_lab_flu_dx',
+                                               'dcon_rsv_pos_lab_rsv_dx',
+                                               'dcon_flu_neg_lab_flu_dx',
+                                               'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_1'~'cohort_2',
+                               check_name%in%c('dcon_flu_pos_lab_flu_dx',
+                                               'dcon_rsv_pos_lab_rsv_dx',
+                                               'dcon_flu_neg_lab_flu_dx',
+                                               'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_2'~'cohort_1',
+                               TRUE~cohort_label
+        )
+      )%>%
+        # cohort_label=case_when(
+        # check_name%in%c('dcon_labsrsvneg-condsrsv',
+        #                                             'dcon_labsrsvpos-condsrsv',
+        #                                             'dcon_labsflupos-condsflu',
+        #                                             'dcon_labsfluneg-condsflu')&cohort_label=='cohort_1'~'cohort_2',
+        #                             check_name%in%c('dcon_labsrsvneg-condsrsv',
+        #                                             'dcon_labsrsvpos-condsrsv',
+        #                                             'dcon_labsflupos-condsflu',
+        #                                             'dcon_labsfluneg-condsflu')&cohort_label=='cohort_2'~'cohort_1',
+        #                             TRUE~cohort_label))%>%
       collect()%>%
       select(-check_type)%>%
+      add_desc(.,
+               join_col_name='check_name',
+               check_type_name='dcon')%>%
       filter(check_name%in%input$dcon_check)%>%
       pivot_wider(names_from='cohort_label',
                   values_from='cohort')%>%
@@ -408,9 +449,21 @@ shinyServer(function(input, output) {
   })
 
   # descriptions of cohorts
+  filtered_dcon_desc <- reactive({
+    if (length(input$dcon_check)==0) {
+      # Return an empty data frame with the same columns as your original data
+      data.frame(
+        check_name = character(0),
+        cohort_1 = character(0),
+        cohort_2 = character(0)
+      )
+    } else {
+      dcon_meta()
+    }
+  })
   output$dcon_cohort_descr <- renderDT(
     DT::datatable(
-      dcon_meta(),
+      filtered_dcon_desc(),
       options=list(pageLength=5),
       rownames=FALSE
     )
@@ -482,12 +535,8 @@ shinyServer(function(input, output) {
   dc_mappings <- results_tbl('dc_mappings')%>%collect()
 
   pf_mappings <- results_tbl('pf_mappings') %>%collect()%>%
-    mutate(`Visit Type`=case_when(str_detect(Label, "all")~"all",
-                                  str_detect(Label, "op")~"outpatient",
-                                  str_detect(Label, "long_ip")~"long_inpatient",
-                                  str_detect(Label, "ip")~"inpatient",
-                                  str_detect(Label, "ed")~"emergency"))%>%
-    select(`Visit Type`, Description)
+    mutate(Label=gsub("Labels with `_", "", Label))%>%
+    mutate(Label=gsub("` suffix","", Label))
 
   df_check_descriptions <- read_codeset('check_type_descriptions','cc')
 
@@ -1598,6 +1647,14 @@ shinyServer(function(input, output) {
             legend.position = "none")+
       coord_flip()
   })
+  ## GLOSSARY ---
+  output$glossary <- DT::renderDT(
+    DT::datatable(
+      glossary,
+      options=list(pageLength=25),
+      rownames=FALSE
+    )
+  )
 
   # SSDQA ISSUES -------
   # adjust available domain

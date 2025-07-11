@@ -64,10 +64,10 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                                               "None"=0))
                                    ),
                                    selectInput(inputId = "dc_domain",
-                                               label="Domain",
-                                               choices = c('adt')), # set a default to avoid empty string detection
+                                               label="Domain Category",
+                                               choices = c('ADT')), # set a default to avoid empty string detection
                                    checkboxGroupInput(inputId="dc_subdomain",
-                                                      label="Specific Check",
+                                                      label="Specific Domain",
                                                       choices=NULL)),
                                  # Begin main
                                  mainPanel(

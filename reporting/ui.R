@@ -49,7 +49,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                         DT::dataTableOutput("dt_descriptions")
                       ))),
            navbarMenu(title="Check Type", icon=icon("chart-area"),
-                      tabPanel("Data Cycle Changes (DC)",
+                      tabPanel("Data Cycle Changes",
                                sidebarLayout(
                                  sidebarPanel(
                                    selectInput(inputId="sitename_dc",
@@ -85,7 +85,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                  )#mainPanel
                                )#sidebarlayout
                       ),#tabpanel for changes between data cycles
-                      tabPanel("Valueset Conformance",
+                      tabPanel("Value Set Conformance",
                                sidebarLayout(
                                  sidebarPanel(
                                  selectInput(inputId = "sitename_vs_conf",
@@ -174,7 +174,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
 
                                )#sidebarlayout
                       ),
-                      tabPanel("Person Facts/Records",
+                      tabPanel("Clinical Fact Documentation",
                                sidebarLayout(
                                  sidebarPanel(
                                    selectInput(inputId = "sitename_pf",
@@ -192,12 +192,12 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                  mainPanel(
                                    fluidRow(
                                      # Person facts/records overall
-                                     box(title="Person Facts/Records Overall", width=12,
+                                     box(title="Clinical Fact Documentation Overall", width=12,
                                          plotlyOutput("pf_overall_heat_plot", height=750)),
                                      box(title="Mapping Abbreviations and Descriptions", width=12,
                                          DT::dataTableOutput("pf_mappings")),
                                      # Person facts/records by site
-                                     box(title="Person Facts/Records By Site", width=12,
+                                     box(title="Clinical Fact Documentation By Site", width=12,
                                          plotOutput("pf_overall_bysite_plot", height=1000))
                                    )#fluidrow
                                  )#mainpanel
@@ -319,7 +319,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                  )#mainPanel
                                )#sidebarlayout
                       ),#tab panel fot
-                      tabPanel("Facts with Associated Visit ID",
+                      tabPanel("Missing Field: Visit ID",
                                sidebarLayout(
                                  sidebarPanel(
                                    selectInput(inputId="sitename_mf_visitid",
@@ -364,7 +364,11 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                  )#mainPanel
                                )#sidebarpanel
                       )#tabpanel for ecp
-           )#,#navbarmenu
+           ),#navbarmenu
+           tabPanel(title="Glossary",icon=icon("book"),
+                    sidebarLayout(
+                      sidebarPanel(tags$p("This page contains definitions for each of the DQ checks contained throughout the dashboard")),
+                      mainPanel(DT::dataTableOutput("glossary"))))
            # tabPanel(title="SSDQA Issues", icon=icon("square-check"),
            #          sidebarLayout(
            #            sidebarPanel(

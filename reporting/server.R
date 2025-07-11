@@ -40,11 +40,12 @@ res <- function(tbl_name) {
 
 }
 #' Function for adding human-readable descriptions for dashboard
+dashboard_labels<-read_codeset('dashboard_labels',col_types = 'ccc')
 add_desc<-function(tbl,
                    join_col_name,
                    check_type_name){
   tbl%>%
-    left_join(read_codeset('dashboard_labels',col_types = 'ccc')%>%
+    left_join(dashboard_labels%>%
                 filter(check_type==check_type_name),
               by=setNames('old_desc',join_col_name)) %>%
     select(-!!sym(join_col_name))%>%
@@ -87,7 +88,7 @@ plot_fot_fn <- function(data) {
 shinyServer(function(input, output) {
   # DATA CAPTURE -------
   ## glossary ----
-  glossary<-results_tbl('dqa_check_metadata')%>%
+  glossary<-results_tbl('dqa_check_descriptions_newnames')%>%
     collect()%>%
    ## select(-check_name)%>%
    ## rename(check_name=new_name)%>%
@@ -189,18 +190,30 @@ shinyServer(function(input, output) {
   ### pp data
   uc_output <- reactive({
     if(input$largen_toggle==1){
-      res('uc_output_pp')
+      res('uc_output_pp')%>%
+        add_desc(.,
+                 join_col_name = 'measure',
+                 check_type_name='uc')
     }else{
-      res('uc_output_ln')
+      res('uc_output_ln')%>%
+        add_desc(.,
+                 join_col_name = 'measure',
+                 check_type_name='uc')
     }
   })
   uc_yr_output <- reactive({
     if(input$largen_toggle==1){
     res('uc_by_year_pp') %>%
-      mutate(year_date=as.integer(year_date))
+      mutate(year_date=as.integer(year_date))%>%
+        add_desc(.,
+                 join_col_name = 'unmapped_description',
+                 check_type_name='uc')
     }else{
       res('uc_by_year_ln')%>%
-        mutate(year_date=as.integer(year_date))
+        mutate(year_date=as.integer(year_date))%>%
+        add_desc(.,
+                 join_col_name = 'unmapped_description',
+                 check_type_name='uc')
     }
   })
   uc_top_output <- reactive({
@@ -242,8 +255,14 @@ shinyServer(function(input, output) {
   ### capture data
   pf_output <- reactive({
     if(input$largen_toggle==1){
-      res('pf_output_pp')
-    }else{res('pf_output_ln')}
+      res('pf_output_pp')%>%
+        add_desc(.,
+                 join_col_name='check_desc_neat',
+                 check_type_name='cfd')
+    }else{res('pf_output_ln')%>%
+        add_desc(.,
+                 join_col_name='check_desc_neat',
+                 check_type_name='cfd')}
   })
   ### adjust available site name
   observeEvent(pf_output(), {
@@ -273,10 +292,16 @@ shinyServer(function(input, output) {
   bmc_pp <- reactive({
     if(input$largen_toggle==1){
       res('bmc_gen_output_pp')%>%
-        left_join(top_rolled, by = c('site_rl', 'check_desc'))
+        left_join(top_rolled, by = c('site_rl', 'check_desc'))%>%
+        add_desc(.,
+                 join_col_name='check_desc',
+                 check_type_name='bmc')
     }else{
       res('bmc_gen_output_ln')%>%
-        left_join(top_rolled, by = c('site_rl', 'check_desc'))
+        left_join(top_rolled, by = c('site_rl', 'check_desc'))%>%
+        add_desc(.,
+                 join_col_name='check_desc',
+                 check_type_name='bmc')
     }
   })
   bmc_pp_concepts <- reactive({
@@ -295,17 +320,20 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId="sitename_bmc", choices=choices_new)
   })
   # find the top 5 per check/site
-  bmc_pp_top <- reactive({
-    bmc_pp_concepts()%>%
-      filter(site==input$sitename_bmc&include_new==0)%>%
-      collect()%>%
-      group_by(check_desc)%>%
-      slice_max(., n=5, order_by=row_proportions) %>%
-      select(check_desc, concept, row_proportions)
-  })
+  # bmc_pp_top <- reactive({
+  #   bmc_pp_concepts()%>%
+  #     filter(site==input$sitename_bmc&include_new==0)%>%
+  #     collect()%>%
+  #     group_by(check_desc)%>%
+  #     slice_max(., n=5, order_by=row_proportions) %>%
+  #     select(check_desc, concept, row_proportions)
+  # })
 
   # pull in the listing of concepts that are considered best/notbest
-  bmc_conceptset <- results_tbl('bmc_conceptset')%>%filter(!is.na(include))%>%collect()
+  bmc_conceptset <- results_tbl('bmc_conceptset')%>%filter(!is.na(include))%>%collect() %>%
+    add_desc(.,
+             join_col_name='check_desc',
+             check_type_name='bmc')
   # set up the BMC tables that will be displayed
   output$bmc_conceptset_best<-DT::renderDT({
     bmc_conceptset%>%
@@ -318,10 +346,10 @@ shinyServer(function(input, output) {
       select(check_desc, concept)
   })
 
-  output$bmc_pp_top_nonbest <- DT::renderDT({
-    bmc_pp_top()%>%
-      mutate(row_proportions=round(row_proportions,2))
-  })
+  # output$bmc_pp_top_nonbest <- DT::renderDT({
+  #   bmc_pp_top()%>%
+  #     mutate(row_proportions=round(row_proportions,2))
+  # })
   observeEvent(bmc_pp(), {
     choices_new<-unique(bmc_pp()$check_desc)
     updateCheckboxGroupInput(inputId="bmc_check", choices=choices_new)
@@ -329,7 +357,11 @@ shinyServer(function(input, output) {
 
   # facts over time ------
   # capture data
-  fot_output_summary_ratio <- reactive({res('fot_output_mnth_ratio_pp')})
+  fot_output_summary_ratio <- reactive({
+    res('fot_output_mnth_ratio_pp')%>%
+      add_desc(.,
+               join_col_name='check_desc',
+               check_type_name='fot')})
   # # update domain choices
   observeEvent(fot_output_summary_ratio(), {
     choices_new_fot<-unique(fot_output_summary_ratio()$domain)%>%sort()
@@ -352,7 +384,10 @@ shinyServer(function(input, output) {
                         c(row_cts, check_name, domain, site_rl, month_end, row_ratio)),
                  by = c('check_name', 'domain', 'site_rl', 'month_end'))%>%
       collect() %>%
-      filter(domain==input$fot_domain)
+      filter(domain==input$fot_domain)%>%
+      add_desc(.,
+               join_col_name='check_desc',
+               check_type_name='fot')
   })
   fot_output_site <- reactive({
     fot_output() %>%
@@ -472,9 +507,15 @@ shinyServer(function(input, output) {
   # connect with data
   mf_visitid_output <- reactive({
     if(input$largen_toggle==1){
-      res('mf_visitid_pp')
+      res('mf_visitid_pp')%>%
+        add_desc(.,
+                 join_col_name='domain',
+                 check_type_name='mf')
     }else{
-      res('mf_visitid_ln')
+      res('mf_visitid_ln')%>%
+        add_desc(.,
+                 join_col_name='domain',
+                 check_type_name='mf')
     }
   })
 
@@ -500,7 +541,17 @@ shinyServer(function(input, output) {
 
   # expected concepts present ---------------------
   ecp_output_all <- reactive({
-    if(input$largen_toggle==1){res('ecp_output_pp')}else{res('ecp_output_ln')}
+    if(input$largen_toggle==1){
+      res('ecp_output_pp')%>%
+        add_desc(.,
+                 join_col_name='concept_group',
+                 check_type_name='ecp')
+    }else{
+        res('ecp_output_ln')%>%
+        add_desc(.,
+                 join_col_name='concept_group',
+                 check_type_name='ecp')
+      }
   })
   ecp_output <- reactive({
     ecp_output_all()%>%

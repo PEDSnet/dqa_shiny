@@ -234,10 +234,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                                      DT::dataTableOutput("bmc_conceptset_best")),
                                             tabPanel("Concepts Considered Not-Best",
                                                      "For each of the checks in the table below, the concepts listed are considered less than ideal levels to map to",
-                                                     DT::dataTableOutput("bmc_conceptset_notbest")),
-                                            tabPanel("Top 5 Not-Best-Mapped",
-                                                     "For each site, the top 5 not-best-mapped concepts per check is displayed below",
-                                                     DT::dataTableOutput("bmc_pp_top_nonbest")))
+                                                     DT::dataTableOutput("bmc_conceptset_notbest")))
                                    )#fluidrow
                                  )#mainpanel
 

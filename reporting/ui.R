@@ -66,7 +66,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                    ),
                                    selectInput(inputId = "dc_domain",
                                                label="Domain",
-                                               choices = c('adt')), # set a default to avoid empty string detection
+                                               choices = c('ADT')), # set a default to avoid empty string detection
                                    checkboxGroupInput(inputId="dc_subdomain",
                                                       label="Specific Check",
                                                       choices=NULL)),
@@ -190,17 +190,17 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
 
                                )#sidebarlayout
                       ),
-                      # PF ----
-                      tabPanel("Person Facts/Records",
+                      # CFD ----
+                      tabPanel("Clinical Fact Documentation",
                                sidebarLayout(
                                  sidebarPanel(
-                                   selectInput(inputId = "sitename_pf",
+                                   selectInput(inputId = "sitename_cfd",
                                                label = "Institution",
                                                choices = NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
-                                     radioButtons(inputId="comp_pf_ln",
+                                     radioButtons(inputId="comp_cfd_ln",
                                                   label="Comparison Type",
                                                   choices=list("Across Sites"=1,
                                                                "None"=0))
@@ -208,14 +208,14 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
-                                     # Person facts/records overall
-                                     box(title="Person Facts/Records Overall", width=12,
-                                         plotlyOutput("pf_overall_heat_plot", height=750)),
+                                     # Clinical Fact Documentation overall
+                                     box(title="Clinical Fact Documentation Overall", width=12,
+                                         plotlyOutput("cfd_overall_heat_plot", height=750)),
                                      box(title="Mapping Abbreviations and Descriptions", width=12,
-                                         DT::dataTableOutput("pf_mappings")),
+                                         DT::dataTableOutput("cfd_mappings")),
                                      # Person facts/records by site
-                                     box(title="Person Facts/Records By Site", width=12,
-                                         plotOutput("pf_overall_bysite_plot", height=1000))
+                                     box(title="Clinical Fact Documentation By Site", width=12,
+                                         plotOutput("cfd_overall_bysite_plot", height=1000))
                                    )#fluidrow
                                  )#mainpanel
 
@@ -324,7 +324,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                                              "Cohort 1",
                                                              "Cohort 2"))),
                                    checkboxGroupInput(inputId="dcon_check",
-                                                      label="Specific Check",
+                                                      label="Check Description",
                                                       choices=NULL)),
                                  # Begin main
                                  mainPanel(
@@ -369,7 +369,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                                choices = NULL),
                                    selectInput(inputId="ecp_check_cat",
                                                label="Concept Category",
-                                               choices=c("anthropometrics")),
+                                               choices=c("Anthropometrics")),
                                  checkboxGroupInput(inputId="ecp_check",
                                                     label="Concept Group",
                                                     choices=NULL)),
@@ -386,17 +386,11 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  )#mainPanel
                                )#sidebarpanel
                       )#tabpanel for ecp
-           )#,#navbarmenu
-           # tabPanel(title="SSDQA Issues", icon=icon("square-check"),
-           #          sidebarLayout(
-           #            sidebarPanel(
-           #              selectInput(inputId = "ssdqa_domain",
-           #                          label = "Select Domain",
-           #                          choices = NULL)
-           #            ),
-           #            mainPanel(
-           #              DT::DTOutput("ssdqa_issues_table")
-           #            )))
+           ),#navbarmenu
+           tabPanel(title="Glossary",icon=icon("book"),
+                    sidebarLayout(
+                      sidebarPanel(tags$p("This page contains definitions for each of the DQ checks contained throughout the dashboard")),
+                      mainPanel(DT::dataTableOutput("glossary"))))
 )#navbarpage
 )#fluidpage
 )#shinyUI

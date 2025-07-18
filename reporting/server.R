@@ -38,14 +38,14 @@ plot_fot_fn <- function(data) {
 
   data%>%
     plotly::plot_ly(
-      x = ~month_end,
+      x = ~time_end,
       y = ~row_cts,
       yaxis="y1",
       name = "Row Counts",
       type="scatter",
       mode="lines") %>%
     plotly::add_trace(
-      x=~month_end,
+      x=~time_end,
       y = ~check,
       type="scatter",
       mode="lines",
@@ -61,13 +61,16 @@ plot_fot_fn <- function(data) {
 
 shinyServer(function(input, output) {
   # DATA CAPTURE -------
+  ## glossary ----
+  glossary<-results_tbl('dqa_check_descriptions')%>%
+    collect()%>%
+    select(check_type,check_name,check_domain,full_description)
   ## data cycle changes -----
   ### pp data
   dc_output_all <- reactive({
     if(input$largen_toggle==1){
       res('dc_output_pp')
-        #%>%filter(domain!='measurement_anthro')
-    }else{res('dc_output_ln')#%>%filter(domain!='measurement_anthro'
+    }else{res('dc_output_ln')
       }
   })
 
@@ -82,7 +85,7 @@ shinyServer(function(input, output) {
 
   ### update choices for domain
   observeEvent(dc_output_all(), {
-    choices_pp<-gsub("_.*","",dc_output_all()$domain)
+    choices_pp<-gsub("(\\w+).*","\\1",dc_output_all()$domain)
     choices_new<-unique(choices_pp)%>%
       sort()
     updateSelectInput(inputId="dc_domain", choices=choices_new)
@@ -209,23 +212,23 @@ shinyServer(function(input, output) {
 
   ## person facts/records -------
   ### capture data
-  pf_output <- reactive({
+  cfd_output <- reactive({
     if(input$largen_toggle==1){
-      res('pf_output_pp')
-    }else{res('pf_output_ln')}
+      res('cfd_output_pp')
+    }else{res('cfd_output_ln')}
   })
   ### adjust available site name
-  observeEvent(pf_output(), {
+  observeEvent(cfd_output(), {
     if(input$largen_toggle==1){
-      choices_new<-c("total",unique(pf_output()$site)%>%sort())
-    }else{choices_new<-unique(filter(pf_output(),site!='total')$site)%>%sort()
+      choices_new<-c("total",unique(cfd_output()$site)%>%sort())
+    }else{choices_new<-unique(filter(cfd_output(),site!='total')$site)%>%sort()
     }
-    updateSelectInput(inputId="sitename_pf", choices=choices_new)
+    updateSelectInput(inputId="sitename_cfd", choices=choices_new)
   })
 
   ## best mapped concepts ----
   ### fetch data
-  top_rolled <-  results_tbl('bmc_gen_output_concepts_pp')%>%
+  top_rolled <-  results_tbl('bmc_output_concepts_pp')%>%
     filter(include_new==0)%>%
     collect()%>%
     group_by(site, check_desc)%>%
@@ -239,15 +242,15 @@ shinyServer(function(input, output) {
 
   bmc_pp <- reactive({
     if(input$largen_toggle==1){
-      res('bmc_gen_output_pp')%>%
+      res('bmc_output_pp')%>%
         left_join(top_rolled, by = c('site', 'check_desc'))
     }else{
-      res('bmc_gen_output_ln')%>%
+      res('bmc_output_ln')%>%
         left_join(top_rolled, by = c('site', 'check_desc'))
     }
   })
   bmc_pp_concepts <- reactive({
-    res('bmc_gen_output_concepts_pp')
+    res('bmc_output_concepts_pp')
   })
   # adjust available site name
   observeEvent(bmc_pp(), {
@@ -269,7 +272,10 @@ shinyServer(function(input, output) {
 
 
   # pull in the listing of concepts that are considered best/notbest
-  bmc_conceptset <- results_tbl('bmc_conceptset')%>%filter(!is.na(include))%>%collect()
+  bmc_conceptset <- results_tbl('bmc_concepts')%>%filter(!is.na(include))%>%
+    inner_join(results_tbl('bmc_output_pp')%>%
+                 distinct(check_name, check_desc), by='check_name')%>%
+    collect()
   # set up the BMC tables that will be displayed
   output$bmc_conceptset_best<-DT::renderDT({
 
@@ -296,7 +302,7 @@ shinyServer(function(input, output) {
 
   ## facts over time ------
   # capture data
-  fot_output_summary_ratio <- reactive({res('fot_output_mnth_ratio_pp')})
+  fot_output_summary_ratio <- reactive({res('fot_ratios_pp')})
   # # update domain choices
   observeEvent(fot_output_summary_ratio(), {
     choices_new_fot<-unique(fot_output_summary_ratio()$domain)%>%sort()
@@ -326,9 +332,9 @@ shinyServer(function(input, output) {
   fot_output <- reactive({res('fot_heuristic_pp') %>%
       inner_join(res('fot_heuristic_summary_pp'),
                  by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>%
-      inner_join(select(res('fot_output_mnth_ratio_pp'),
-                        c(row_cts, check_name, domain, site, month_end)),
-                 by = c('check_name', 'domain', 'site', 'month_end'))%>%
+      inner_join(select(res('fot_ratios_pp'),
+                        c(row_cts, check_name, domain, site, time_end)),
+                 by = c('check_name', 'domain', 'site', 'time_end'))%>%
       collect() %>%
       filter(domain==input$fot_domain)
   })
@@ -373,32 +379,19 @@ shinyServer(function(input, output) {
   })
 
   observeEvent(dcon_output(), {
-    choices_new<-unique(dcon_output()$check_name)
+    choices_new<-unique(dcon_output()$description_full)
     updateCheckboxGroupInput(inputId="dcon_check", choices=choices_new)
   })
 
   dcon_meta <- reactive({
-    results_tbl('dcon_meta')%>%
-      mutate(check_name=case_when(check_name=='dcon_flu_dx_flu_pos_lab'~'dcon_flu_pos_lab_flu_dx',
-                                  check_name=='dcon_rsv_dx_rsv_pos_lab'~'dcon_rsv_pos_lab_rsv_dx',
-                                  check_name=='dcon_flu_dx_flu_neg_lab'~'dcon_flu_neg_lab_flu_dx',
-                                  check_name=='dcon_rsv_dx_rsv_neg_lab'~'dcon_rsv_neg_lab_rsv_dx',
-                                  TRUE~check_name),
-             cohort_label=case_when(check_name%in%c('dcon_flu_pos_lab_flu_dx',
-                                                    'dcon_rsv_pos_lab_rsv_dx',
-                                                    'dcon_flu_neg_lab_flu_dx',
-                                                    'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_1'~'cohort_2',
-                                    check_name%in%c('dcon_flu_pos_lab_flu_dx',
-                                                    'dcon_rsv_pos_lab_rsv_dx',
-                                                    'dcon_flu_neg_lab_flu_dx',
-                                                    'dcon_rsv_neg_lab_rsv_dx')&cohort_label=='cohort_2'~'cohort_1',
-                                    TRUE~cohort_label))%>%
+    results_tbl('dcon_meta')%>%collect()%>%
+      inner_join(dcon_output()%>%filter(description_full%in%input$dcon_check)%>%
+                   distinct(check_name, description_full), by = 'check_name')%>%
       collect()%>%
-      select(-check_type)%>%
-      filter(check_name%in%input$dcon_check)%>%
-      pivot_wider(names_from='cohort_label',
-                  values_from='cohort')%>%
-      select(check_name, cohort_1, cohort_2)
+      select(description_full, cohort, cohort_description)%>%
+      pivot_wider(names_from='cohort',
+                  values_from='cohort_description')%>%
+      select(description_full, cohort_1, cohort_2)
   })
   # adjust available site names
   observeEvent(dcon_output(), {
@@ -410,9 +403,22 @@ shinyServer(function(input, output) {
   })
 
   # descriptions of cohorts
+  filtered_dcon_desc <- reactive({
+    if (length(input$dcon_check)==0) {
+      # Return an empty data frame with the same columns as your original data
+      data.frame(
+        `Check Description` = character(0),
+        `Cohort 1` = character(0),
+        `Cohort 2` = character(0)
+      )
+    } else {
+      dcon_meta()
+    }
+  })
   output$dcon_cohort_descr <- renderDT(
     DT::datatable(
-      dcon_meta(),
+      filtered_dcon_desc(),
+      colnames = c("Check Description", "Cohort 1", "Cohort 2"),
       options=list(pageLength=5),
       rownames=FALSE
     )
@@ -484,12 +490,13 @@ shinyServer(function(input, output) {
 
   dc_mappings <- results_tbl('dc_mappings')%>%collect()
 
-  pf_mappings <- results_tbl('pf_mappings') %>%collect()%>%
-    mutate(`Visit Type`=case_when(str_detect(Label, "all")~"all",
-                                  str_detect(Label, "op")~"outpatient",
-                                  str_detect(Label, "long_ip")~"long_inpatient",
-                                  str_detect(Label, "ip")~"inpatient",
-                                  str_detect(Label, "ed")~"emergency"))%>%
+  cfd_mappings <- results_tbl('pf_mappings') %>%collect()%>%
+    mutate(`Visit Type`=case_when(str_detect(Label, "_all")~"all",
+                                  str_detect(Label, "_outpatient")~"outpatient",
+                                  str_detect(Label, "_long_inpatient")~"long_inpatient",
+                                  str_detect(Label, "_inpatient")~"inpatient",
+                                  str_detect(Label, "_emergency")~"emergency",
+                                  str_detect(Label, "_cancelled")~"cancelled"))%>%
     select(`Visit Type`, Description)
 
   df_check_descriptions <- read_codeset('check_type_descriptions','cc')
@@ -1123,15 +1130,15 @@ shinyServer(function(input, output) {
   ## PERSON FACTS/RECORDS ------
   ### barplot
 
-  output$pf_mappings <- DT::renderDT(
+  output$cfd_mappings <- DT::renderDT(
     DT::datatable(
-      pf_mappings,
+      cfd_mappings,
       options=list(pageLength=5),
       rownames=FALSE
     )
   )
-  output$pf_overall_bysite_plot <- renderPlot({
-    if(input$sitename_pf=="total"){
+  output$cfd_overall_bysite_plot <- renderPlot({
+    if(input$sitename_cfd=="total"){
       outplot <- ggplot()+
         geom_blank()+
         annotate("text", label="Select a site", x=0,y=0)+
@@ -1144,7 +1151,7 @@ shinyServer(function(input, output) {
         labs(x="",
              y="")
     }else{
-      plotdat<-filter(pf_output(),site==input$sitename_pf)
+      plotdat<-filter(cfd_output(),site==input$sitename_cfd)
       outplot <- ggplot(plotdat,
                         aes(x=check_desc_neat, y = fact_visits_prop, label=fact_visits_prop, fill=site)) +
         geom_bar(stat='identity')+
@@ -1164,9 +1171,9 @@ shinyServer(function(input, output) {
     return(outplot)
   })
   ### heatmap (individual sites) or bar plot (large n)
-  output$pf_overall_heat_plot <- renderPlotly({
-    if(input$sitename_pf=="total"){
-        outplot <- ggplot(pf_output()%>%
+  output$cfd_overall_heat_plot <- renderPlotly({
+    if(input$sitename_cfd=="total"){
+        outplot <- ggplot(cfd_output()%>%
                             mutate(text=paste0("site: ",site,
                                                "\ncheck: ",check_desc_neat,
                                                "\nprop. visits: ",fact_visits_prop,
@@ -1177,11 +1184,11 @@ shinyServer(function(input, output) {
           theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
           labs(x="",y="",
                fill="Proportion Patients\nwith Fact")+
-          facet_wrap(~visit_type, scales = "free_x")+
+          facet_wrap(~visit_type)+
           scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
         # large n, comparison
-    }else if(input$largen_toggle==2&input$comp_pf_ln==1){
-        outplot<-ggplot(pf_output()%>%filter(site==input$sitename_pf)%>%
+    }else if(input$largen_toggle==2&input$comp_cfd_ln==1){
+        outplot<-ggplot(cfd_output()%>%filter(site==input$sitename_cfd)%>%
                           mutate(text=paste0("\nprop. patients: ",fact_pts_prop,
                                              "\nprop. visits: ",fact_visits_prop,
                                              "\nprop. patients median (Q1, Q3): ", round(median_val_pts,2), " (",round(q1_pts,2), ", ", round(q3_pts,2), ")",
@@ -1197,7 +1204,7 @@ shinyServer(function(input, output) {
           labs(x="Fact Type",y="Proportion Patients with Fact")+
           theme(legend.position="none")
       }else{
-      outplot <- ggplot(filter(pf_output(),site==input$sitename_pf)%>%
+      outplot <- ggplot(filter(cfd_output(),site==input$sitename_cfd)%>%
                           mutate(text=paste0("site: ",site,
                                              "\ncheck: ",check_desc_neat,
                                              "\nprop. visits: ",fact_visits_prop,
@@ -1207,7 +1214,7 @@ shinyServer(function(input, output) {
         theme_bw()+
         labs(y="",
              fill="Proportion Patients\nwith Fact")+
-        facet_wrap(~visit_type, scales = "free_x")+
+        facet_wrap(~visit_type)+
         scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
     }
     return(ggplotly(outplot, tooltip="text"))
@@ -1229,7 +1236,7 @@ shinyServer(function(input, output) {
              y="")
     }else if(input$sitename_bmc=="total"){
       # individual sites, overall
-        outplot <-  ggplot(filter(bmc_pp(),include_new==1L&site!='total'&check_desc%in%input$bmc_check),
+        outplot <-  ggplot(filter(bmc_pp(),include==1L&site!='total'&check_desc%in%input$bmc_check),
                            aes(x=site, y=best_row_prop, fill=site,
                                text=round(best_row_prop,2)))+
           geom_bar(stat='identity')+
@@ -1242,7 +1249,7 @@ shinyServer(function(input, output) {
           theme(legend.position="none")
     }else if(input$largen_toggle==2&input$comp_bmc_ln==1){
       # large n, overall
-        outplot <- ggplot(filter(bmc_pp(),include_new==1L&site==input$sitename_bmc&check_desc%in%input$bmc_check)%>%
+        outplot <- ggplot(filter(bmc_pp(),include==1L&site==input$sitename_bmc&check_desc%in%input$bmc_check)%>%
                             mutate(text=paste("Proportion best mapped: ",round(best_row_prop,2),
                                               "\nOverall median (Q1, Q3): ",round(median_val,2), " (",round(q1,2),", ",round(q3,2), ")")),
                           aes(x=check_desc,fill=site,text=text))+
@@ -1257,9 +1264,9 @@ shinyServer(function(input, output) {
           coord_flip()
       }else{
       outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc&check_desc%in%input$bmc_check)%>%
-                          mutate(include_new=case_when(include_new==0~"No",
-                                                       include_new==1~"Yes")),
-                        aes(x=check_desc, y=best_row_prop, fill=include_new, text=paste0("Proportion ",include_new, ": ", round(best_row_prop,2),
+                          mutate(include=case_when(include==0~"No",
+                                                       include==1~"Yes")),
+                        aes(x=check_desc, y=best_row_prop, fill=include, text=paste0("Proportion ",include, ": ", round(best_row_prop,2),
                                                                                          "\n",
                                                                                          "Top non-best: ", top5)))+
         geom_bar(stat='identity', position='stack')+
@@ -1288,13 +1295,13 @@ shinyServer(function(input, output) {
         filter(check_desc==input$fot_subdomain_overall&site%in%c('allsite_median','allsite_mean'))
     }
     showplot <- ggplot(indat,
-                       aes(x=month_end,
+                       aes(x=time_end,
                            y=row_ratio,
                            color=site,
                            group=site)
     )+
       geom_smooth(se=TRUE,alpha=0.1,linewidth=0.5,formula=y~x)+
-      geom_smooth(data=allsite_avg, aes(x=month_end,
+      geom_smooth(data=allsite_avg, aes(x=time_end,
                                         y=row_ratio,
                                         color=site,
                                         group=site),linewidth=1)+
@@ -1375,8 +1382,8 @@ shinyServer(function(input, output) {
             output[[plotname]] <- renderPlotly({
               df_plots$plot[[my_i]]%>%
                 layout(title=plot_title) %>%
-                add_lines(x=~month_end,y=~m+std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Upper SD bound')%>%
-                add_lines(x=~month_end,y=~m-std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Lower SD bound')
+                add_lines(x=~time_end,y=~m+std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Upper SD bound')%>%
+                add_lines(x=~time_end,y=~m-std_dev*as.numeric(input$fot_bounds), yaxis='y2', name='Lower SD bound')
             })
           })
         }
@@ -1404,7 +1411,7 @@ shinyServer(function(input, output) {
       if(input$denom_dcon=='Overall'){
           showplot <- ggplot(filter(dcon_output(),
                                     site!='total',
-                                    check_name%in%input$dcon_check,
+                                    description_full%in%input$dcon_check,
                                     cohort%in%c("cohort 2 only", "combined", "cohort 1 only"))) +
             geom_bar(aes(x=site,y=prop,fill=cohort,
                          text=paste0("Cohort: ", cohort,
@@ -1422,7 +1429,7 @@ shinyServer(function(input, output) {
         }else if(input$denom_dcon=='Cohort 1'){
           showplot <- ggplot(filter(dcon_output(),
                                     site!='total',
-                                    check_name%in%input$dcon_check,
+                                    description_full%in%input$dcon_check,
                                     cohort%in%c("cohort 1 not 2", "cohort 2 in 1"))) +
             geom_bar(aes(x=site,y=prop,fill=cohort,
                          text=paste0("Cohort: ", cohort,
@@ -1440,7 +1447,7 @@ shinyServer(function(input, output) {
         }else if(input$denom_dcon=='Cohort 2'){
           showplot <- ggplot(filter(dcon_output(),
                                     site!='total',
-                                    check_name%in%input$dcon_check,
+                                    description_full%in%input$dcon_check,
                                     cohort%in%c("cohort 2 not 1", "cohort 1 in 2"))) +
             geom_bar(aes(x=site,y=prop,fill=cohort,
                          text=paste0("Cohort: ", cohort,
@@ -1460,7 +1467,7 @@ shinyServer(function(input, output) {
     }else if(input$largen_toggle==2&input$comp_dcon_ln==1){
       showplot <- ggplot(filter(dcon_output(),
                                 site==input$sitename_dcon,
-                                check_name%in%input$dcon_check,
+                                description_full%in%input$dcon_check,
                                 cohort%in%c("cohort 1 only", "cohort 2 only", "combined")),
                          aes(x=cohort)) +
         geom_bar(aes(y=prop,fill=cohort,
@@ -1483,7 +1490,7 @@ shinyServer(function(input, output) {
       if(input$denom_dcon=="Overall"){
         showplot <- ggplot(filter(dcon_output(),
                                   site==input$sitename_dcon&
-                                    check_name%in%input$dcon_check&
+                                    description_full%in%input$dcon_check&
                                     cohort%in%c("cohort 2 only", "combined", "cohort 1 only"))) +
           geom_bar(aes(x=site,y=prop,fill=cohort,
                        text=paste0("Cohort: ", cohort,
@@ -1501,7 +1508,7 @@ shinyServer(function(input, output) {
       }else if(input$denom_dcon=="Cohort 1"){
         showplot <- ggplot(filter(dcon_output(),
                                   site==input$sitename_dcon&
-                                    check_name%in%input$dcon_check&
+                                    description_full%in%input$dcon_check&
                                     cohort%in%c("cohort 1 not 2", "cohort 2 in 1"))) +
           geom_bar(aes(x=site,y=prop,fill=cohort,
                        text=paste0("Cohort: ", cohort,
@@ -1519,7 +1526,7 @@ shinyServer(function(input, output) {
       }else if(input$denom_dcon=="Cohort 2"){
         showplot <- ggplot(filter(dcon_output(),
                                   site==input$sitename_dcon&
-                                    check_name%in%input$dcon_check&
+                                    description_full%in%input$dcon_check&
                                     cohort%in%c("cohort 2 not 1", "cohort 1 in 2"))) +
           geom_bar(aes(x=site,y=prop,fill=cohort,
                        text=paste0("Cohort: ", cohort,
@@ -1673,6 +1680,14 @@ shinyServer(function(input, output) {
             axis.title.y=element_text(size=14))+
       coord_flip()
   })
+  ## GLOSSARY ---
+  output$glossary <- DT::renderDT(
+    DT::datatable(
+      glossary,
+      options=list(pageLength=25),
+      rownames=FALSE
+    )
+  )
 
   # SSDQA ISSUES -------
   # adjust available domain

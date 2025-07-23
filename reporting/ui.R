@@ -177,13 +177,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                       tabPanel("Clinical Fact Documentation",
                                sidebarLayout(
                                  sidebarPanel(
-                                   selectInput(inputId = "sitename_pf",
+                                   selectInput(inputId = "sitename_cfd",
                                                label = "Institution",
                                                choices = NULL),
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
-                                     radioButtons(inputId="comp_pf_ln",
+                                     radioButtons(inputId="comp_cfd_ln",
                                                   label="Comparison Type",
                                                   choices=list("Across Sites"=1,
                                                                "None"=0))
@@ -193,12 +193,12 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    fluidRow(
                                      # Person facts/records overall
                                      box(title="Clinical Fact Documentation Overall", width=12,
-                                         plotlyOutput("pf_overall_heat_plot", height=750)),
+                                         plotlyOutput("cfd_overall_heat_plot", height=750)),
                                      box(title="Mapping Abbreviations and Descriptions", width=12,
-                                         DT::dataTableOutput("pf_mappings")),
+                                         DT::dataTableOutput("cfd_mappings")),
                                      # Person facts/records by site
                                      box(title="Clinical Fact Documentation By Site", width=12,
-                                         plotOutput("pf_overall_bysite_plot", height=1000))
+                                         plotOutput("cfd_overall_bysite_plot", height=1000))
                                    )#fluidrow
                                  )#mainpanel
 

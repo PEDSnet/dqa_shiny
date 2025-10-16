@@ -142,14 +142,12 @@ shinyServer(function(input, output) {
   vs_output <- reactive({
     if(input$largen_toggle==1){
       res('vs_output_pp')%>%
-        mutate(prop_viol=round(tot_prop,2),
-               tot_prop=round(tot_prop,2))
+        mutate(prop_viol=round(tot_prop,2))
     }else{res('vs_output_ln')}
   })
   vs_vocablevel<-reactive({
     res('vs_output_pp')%>%
-      mutate(prop_viol=round(tot_prop,2),
-             tot_prop=round(tot_prop,2))
+      mutate(prop_viol=round(tot_prop,2))
   })
   ### adjust available site name
   observeEvent(vs_output(), {
@@ -751,7 +749,7 @@ shinyServer(function(input, output) {
   output$vs_plot <- renderPlotly({
     if(input$sitename_vs_conf=='total'){
       outplot<-ggplot(filter(vs_output(),!accepted_value),
-                      aes(x=site, y=tot_prop, fill=vocabulary_id, text=tot_prop))+
+                      aes(x=site, y=tot_prop, fill=vocabulary_id, text=prop_viol))+
         geom_bar(stat="identity",position="dodge")+
         scale_fill_pedsn_dq()+
         facet_wrap(~table_application*measurement_column, scales="free_x")+
@@ -765,7 +763,7 @@ shinyServer(function(input, output) {
               axis.title.y=element_text(size=14))
       }else if((input$largen_toggle==1|input$comp_vs_ln==0)&
                 nrow(filter(vs_vocablevel(), site==input$sitename_vs_conf&!accepted_value))>0){
-        outplot<-ggplot(filter(vs_vocablevel(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id,text=tot_prop)) +
+        outplot<-ggplot(filter(vs_vocablevel(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id,text=prop_viol)) +
           geom_bar(stat="identity", position="dodge") +
           geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
                      position=position_dodge(),

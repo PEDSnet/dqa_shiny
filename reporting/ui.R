@@ -360,7 +360,35 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    )#fluidRow
                                  )#mainPanel
                                )#sidebarpanel
-                      )#tabpanel for ecp
+                      ),#tabpanel for ecp
+                      # DP ----
+                      tabPanel("Date Plausibility",
+                               sidebarLayout(
+                                 sidebarPanel(
+                                   selectInput(inputId="sitename_dp",
+                                               label="PEDSnet Institution",
+                                               choices = NULL),
+                                   # only show comparison option for overall metrics
+                                   conditionalPanel(
+                                     condition="input.largen_toggle == 2",
+                                     radioButtons(inputId="comp_dp_ln",
+                                                  label="Comparison Type",
+                                                  choices=list("Across Sites"=1,
+                                                               "None"=0))
+                                   ),
+                                   checkboxGroupInput(inputId="dp_check_desc",
+                                                      label="Check Description",
+                                                      choices=NULL)),
+                                 # Begin main
+                                 mainPanel(
+                                   fluidRow(
+                                     box(title="Date Plausibility Distribution",
+                                         width=12,
+                                         plotlyOutput("dp_overall",height=600))
+                                   )#fluidRow
+                                 )#mainPanel
+                               )#sidebarpanel
+                      )#tabpanel for dp
            ),#navbarmenu
            tabPanel(title="Glossary",icon=icon("book"),
                     sidebarLayout(

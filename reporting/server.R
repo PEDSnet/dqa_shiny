@@ -75,7 +75,7 @@ plot_fot_fn <- function(data) {
 shinyServer(function(input, output) {
   # DATA CAPTURE -------
   ## glossary ----
-  glossary<-results_tbl('dqa_check_descriptions')%>%
+  glossary<-results_tbl('dqa_check_metadata')%>%
     collect()%>%
     select(check_type,check_name,check_domain,full_description)
 
@@ -241,7 +241,7 @@ shinyServer(function(input, output) {
   ### fetch data
   top_rolled <-  results_tbl('bmc_output_concepts_pp')%>%
     rename(site_rl=site)%>%
-    filter(include_new==0)%>%
+    filter(include==0)%>%
     collect()%>%
     group_by(site_rl, check_desc)%>%
     slice_max(., n=5, order_by=row_proportions) %>%
@@ -441,9 +441,9 @@ shinyServer(function(input, output) {
   # connect with data
   mf_visitid_output <- reactive({
     if(input$largen_toggle==1){
-      res('mf_visitid_pp')
+      res('mf_visitid_output_pp')
     }else{
-      res('mf_visitid_ln')
+      res('mf_visitid_output_ln')
     }
   })
 
@@ -495,6 +495,28 @@ shinyServer(function(input, output) {
     updateCheckboxGroupInput(inputId="ecp_check", choices=choices_new)
   })
 
+  # date plausibility -------
+  dp_output_all <- reactive({
+    if(input$largen_toggle==1){
+      res('dp_output_pp')
+    }else{res('dp_output_ln')
+    }
+  })
+
+  ### adjust available site name
+  observeEvent(dp_output_all(), {
+    if(input$largen_toggle==1){
+      choices_new<-c("total",unique(dp_output_all()$site)%>%sort())
+    }else{choices_new<-unique(filter(dp_output_all(),site!='total')$site)%>%sort()
+    }
+    updateSelectInput(inputId="sitename_dp", choices=choices_new)
+  })
+  ### update choices for check
+  observeEvent(dp_output_all(), {
+    choices_new<-unique(dp_output_all()$check_description)%>%sort()
+    updateCheckboxGroupInput(inputId="dp_check_desc", choices=choices_new)
+  })
+
 
   # other configurations ----------------------
 
@@ -507,7 +529,7 @@ shinyServer(function(input, output) {
 
   dc_mappings <- results_tbl('dc_mappings')%>%collect()
 
-  cfd_mappings <- results_tbl('pf_mappings') %>%collect()%>%
+  cfd_mappings <- results_tbl('cfd_mappings') %>%collect()%>%
     mutate(`Visit Type`=case_when(str_detect(Label, "_all")~"all",
                                   str_detect(Label, "_outpatient")~"outpatient",
                                   str_detect(Label, "_long_inpatient")~"long_inpatient",
@@ -684,7 +706,7 @@ shinyServer(function(input, output) {
         text=paste0("site: ",site,
                     "\ndomain: ",domain,
                     "\nproportion change: ",prop_total_change)),
-        aes(x=site, y=domain, fill=prop_total_change, text=text))+
+        aes(x=site, y=domain, fill=plot_prop, text=text))+
         geom_tile()+
         scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
         guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
@@ -734,12 +756,12 @@ shinyServer(function(input, output) {
                       aes(x=site, y=tot_prop, fill=vocabulary_id))+
         geom_bar(stat="identity",position="dodge")+
         scale_fill_pedsn_dq()+
-        facet_wrap(~measurement_column, scales="free_x")+
+        facet_wrap(~table_application*measurement_column, scales="free_x")+
         ylim(0,1)+
         theme_bw()+
         labs(y="Proportion of Total Records",
              title="Violating Records per Column")+
-        theme(axis.text.x=element_text(size=14),
+        theme(axis.text.x=element_text(size=14, angle = 90, vjust = 0.5, hjust=1),
               axis.text.y=element_text(size=14),
               axis.title.x=element_text(size=14),
               axis.title.y=element_text(size=14))
@@ -748,7 +770,7 @@ shinyServer(function(input, output) {
                nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
       outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id)) +
         geom_bar(stat="identity", position="dodge") +
-        geom_label(aes(x=measurement_column, y=tot_prop, label=round(tot_prop,3)),
+        geom_label(aes(x=measurement_column, y=tot_prop, label=prop_viol),
                    position=position_dodge(),
                    show.legend = FALSE)+
         ylim(0, 1)+
@@ -761,10 +783,10 @@ shinyServer(function(input, output) {
               axis.text.y=element_text(size=14),
               axis.title.x=element_text(size=14),
               axis.title.y=element_text(size=14))
-      }else if(input$largen_toggle==2&input$comp_vs_ln==0&nrow(filter(vs_output(), site==input$sitename_vs_conf&prop_viol>0))>0){
-        outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&prop_viol>0), aes(x=measurement_column, y = prop_viol, fill = measurement_column)) +
+      }else if(input$largen_toggle==2&input$comp_vs_ln==0&nrow(filter(vs_output(), site==input$sitename_vs_conf&tot_prop>0))>0){
+        outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&tot_prop>0), aes(x=measurement_column, y = tot_prop, fill = measurement_column)) +
           geom_bar(stat="identity", position="dodge") +
-          geom_label(aes(x=measurement_column, y=prop_viol, label=round(prop_viol,3)),
+          geom_label(aes(x=measurement_column, y=tot_prop, label=prop_viol),
                      position=position_dodge(),
                      show.legend = FALSE)+
           ylim(0, 1)+
@@ -778,12 +800,12 @@ shinyServer(function(input, output) {
                 axis.title.x=element_text(size=14),
                 axis.title.y=element_text(size=14))
       }else if(input$largen_toggle==2&input$comp_vs_ln==1&
-               nrow(filter(vs_output(), site==input$sitename_vs_conf&prop_viol>0))>0){
+               nrow(filter(vs_output(), site==input$sitename_vs_conf&tot_prop>0))>0){
         outplot<-ggplot(filter(vs_output(), site==input$sitename_vs_conf)%>%
-                      mutate(text=paste0("proportion: ",round(prop_viol, 2),
+                      mutate(text=paste0("proportion: ",prop_viol,
                                          "\nmedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
                     aes(x=measurement_column, text=text))+
-          geom_bar(aes(y=prop_viol, fill=site),stat="identity")+
+          geom_bar(aes(y=tot_prop, fill=site),stat="identity")+
           geom_linerange(aes(ymin=q1, ymax=q3))+
           geom_point(aes(y=median_val), shape=23, size=1)+
           facet_wrap(~table_application, scales="free")+
@@ -827,10 +849,10 @@ shinyServer(function(input, output) {
         theme(axis.text.x = element_text(angle=90))
       }else if(input$largen_toggle==2&input$comp_vc_ln==1){
         plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
-                      mutate(text=paste0("proportion: ",round(prop_viol, 2),
+                      mutate(text=paste0("proportion: ",prop_viol,
                                          "\nmedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
                     aes(x=measurement_column, text=text))+
-          geom_bar(aes(y=prop_viol, fill=site),stat="identity")+
+          geom_bar(aes(y=tot_prop, fill=site),stat="identity")+
           geom_linerange(aes(ymin=q1, ymax=q3))+
           geom_point(aes(y=median_val), shape=23, size=1)+
           labs(x = "Column",
@@ -841,8 +863,8 @@ shinyServer(function(input, output) {
           theme(legend.position = "none")
       }else if(input$largen_toggle==2&input$comp_vc_ln==0){
         plt<-ggplot(filter(vc_output(),site==input$sitename_vc_conf)%>%
-                      mutate(text=paste0("proportion with violation: ",round(prop_viol,3))))+
-          geom_bar(aes(x=measurement_column,y=prop_viol,fill=site, text=text), stat="identity")+
+                      mutate(text=paste0("proportion with violation: ",prop_viol)))+
+          geom_bar(aes(x=measurement_column,y=tot_prop,fill=site, text=text), stat="identity")+
           theme_bw()+
           scale_fill_manual(values=site_colors)+
           coord_flip()+
@@ -865,7 +887,7 @@ shinyServer(function(input, output) {
        plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                      mutate(text=paste0("site: ",site,
                                         "\nproportion: ",prop_viol)),
-                   aes(x=measurement_column,y=prop_viol, fill=measurement_column, text=text))+
+                   aes(x=measurement_column,y=tot_prop, fill=measurement_column, text=text))+
          geom_bar(stat="identity",position="stack")+
          theme_bw()+
          scale_fill_pedsn_dq()+
@@ -904,7 +926,7 @@ shinyServer(function(input, output) {
     }else if(input$largen_toggle==2&nrow(filter(vc_vocablevel(),site==input$sitename_vc_conf&!accepted_value))>0){
       outplot<-ggplot(filter(vc_vocablevel(), site==input$sitename_vc_conf&!accepted_value)%>%
                         mutate(text=paste0("vocabulary: ",vocabulary_id,
-                                           "\nproportion: ",tot_prop)), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id, text=text)) +
+                                           "\nproportion: ",prop_viol)), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id, text=text)) +
         geom_bar(stat="identity", position="dodge") +
         ylim(0, 1)+
         facet_wrap(~table_application, scales="free")+
@@ -1625,6 +1647,94 @@ shinyServer(function(input, output) {
             legend.position = "none")+
       coord_flip()
   })
+
+  # DATE PLAUSIBILITY -----
+  output$dp_overall <- renderPlotly({
+    if(length(input$dp_check_desc)==0){
+      plt<-ggplot()+
+        geom_blank()+
+        annotate("text", label="Select check description/s", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(input$largen_toggle==1){
+      if(input$sitename_dp=='total'){
+        plt<-ggplot(dp_output_all()%>%
+                      filter(check_description%in%input$dp_check_desc)%>%
+                      mutate(text=paste0("site: ",site,
+                                         "\nproportion: ",round(prop_implausible,2))),
+                    aes(x=site, y=prop_implausible, fill=site, text=text))+
+          geom_bar(stat="identity")+
+          scale_fill_manual(values=site_colors)+
+          theme_bw()+
+          labs(y="Proportion Implausible",
+               title="Proportion of Rows with Implausible Date")+
+          theme(legend.position = "none")+
+          facet_wrap(~desc_full)+
+          coord_flip()
+      }else{
+        plt<-ggplot(dp_output_all()%>%
+                      filter(check_description%in%input$dp_check_desc,
+                             site==input$sitename_dp)%>%
+                      mutate(text=paste0("\nproportion: ",round(prop_implausible,2),
+                                         "\ndescription: ",desc_full)),
+                    aes(x=implausible_type, y=prop_implausible, fill=site, text=text))+
+          geom_bar(stat="identity")+
+          scale_fill_manual(values=site_colors)+
+          theme_bw()+
+          labs(x="Implausible Type",
+               y="Proportion Implausible",
+               title="Proportion of Rows with Implausible Date")+
+          theme(legend.position = "none")+
+          facet_wrap(~check_description)+
+          coord_flip()
+      }
+    }else if(input$largen_toggle==2&input$comp_dp_ln==1){
+      # summary metrics: comparison
+      plt<-ggplot(filter(dp_output_all(),check_description%in%input$dp_check_desc&site==input$sitename_dp)%>%
+                    mutate(text=paste0("\nproportion: ",round(prop_implausible,2),
+                                       "\ndescription: ",desc_full,
+                                       "\nMedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
+                  aes(x=implausible_type, y=prop_implausible, text=text))+
+        geom_bar(stat="identity",aes(fill=site))+
+        geom_linerange(aes(ymin=q1, ymax=q3))+
+        geom_point(aes(y=median_val), shape=23, size=1)+
+        facet_wrap(~check_description)+
+        theme_bw()+
+        scale_fill_manual(values=site_colors)+
+        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16),
+              legend.position = "none")+
+        labs(x="Implausible Type",
+             y="Proportion Implausible",
+             title="Proportion of Rows with Implausible Date")+
+        coord_flip()
+    }else{
+      plt<-ggplot(dp_output_all()%>%
+                    filter(check_description%in%input$dp_check_desc,
+                           site==input$sitename_dp)%>%
+                    mutate(text=paste0("\nproportion: ",round(prop_implausible,2),
+                                       "\ndescription: ",desc_full)),
+                  aes(x=implausible_type, y=prop_implausible, fill=site, text=text))+
+        geom_bar(stat="identity")+
+        scale_fill_manual(values=site_colors)+
+        theme_bw()+
+        labs(x="Implausible Type",
+             y="Proportion Implausible",
+             title="Proportion of Rows with Implausible Date")+
+        theme(legend.position = "none")+
+        facet_wrap(~check_description)+
+        coord_flip()
+    }
+    return(ggplotly(plt, tooltip="text"))
+  })
+
   ## GLOSSARY ---
   output$glossary <- DT::renderDT(
     DT::datatable(

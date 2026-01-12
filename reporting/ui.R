@@ -384,7 +384,8 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    fluidRow(
                                      box(title="Date Plausibility Distribution",
                                          width=12,
-                                         plotlyOutput("dp_overall",height=600))
+                                         height=18,
+                                         plotlyOutput("dp_overall",height=700))
                                    )#fluidRow
                                  )#mainPanel
                                )#sidebarpanel

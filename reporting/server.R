@@ -686,7 +686,7 @@ shinyServer(function(input, output) {
                     "\ndomain: ",domain,
                     "\ncheck description: ",check_description,
                     "\nproportion change: ",prop_total_change)),
-        aes(x=site, y=check_description, fill=plot_prop, text=text))+
+        aes(x=site, y=check_description, fill=prop_total_change, text=text))+
         geom_tile()+
         scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
         guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
@@ -746,7 +746,8 @@ shinyServer(function(input, output) {
         theme(axis.text.x=element_text(size=14, angle = 90, vjust = 0.5, hjust=1),
               axis.text.y=element_text(size=14),
               axis.title.x=element_text(size=14),
-              axis.title.y=element_text(size=14))
+              axis.title.y=element_text(size=14))+
+        scale_fill_pedsn_dq()
       # individual site or no comparison
       }else if(input$largen_toggle==1&
                nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
@@ -758,6 +759,7 @@ shinyServer(function(input, output) {
         ylim(0, 1)+
         facet_wrap(~table_application, scales="free")+
         theme_bw()+
+        scale_fill_pedsn_dq()+
         labs(x="Column Name",
              y="Proportion of Total Records",
              title="Violating Records per Column")+
@@ -774,6 +776,7 @@ shinyServer(function(input, output) {
           ylim(0, 1)+
           facet_wrap(~table_application, scales="free")+
           theme_bw()+
+          scale_fill_pedsn_dq()+
           labs(x="Column Name",
                y="Proportion of Total Records",
                title="Violating Records per Column")+
@@ -794,7 +797,7 @@ shinyServer(function(input, output) {
           labs(x = "Column",
                y="Proportion Violating Records")+
           theme_bw()+
-          scale_fill_manual(values=site_colors)+
+          scale_fill_pedsn_dq()+
           coord_flip()+
           theme(legend.position = "none",
                 axis.text.x=element_text(size=14),

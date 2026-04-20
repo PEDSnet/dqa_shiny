@@ -151,6 +151,10 @@ shinyServer(function(input, output) {
     res('vs_output_pp')%>%
       mutate(prop_viol=round(tot_prop,2))
   })
+  vs_violations<-reactive({
+    res('vs_violations_pp')%>%
+      mutate(prop_viol=round(tot_prop,2))
+  })
   ### adjust available site name
   observeEvent(vs_output(), {
     if(input$largen_toggle==1){
@@ -704,7 +708,7 @@ shinyServer(function(input, output) {
                     "\nproportion change: ",prop_total_change,
                     "\nprevious count: ", format(!!sym(tc_prev),big.mark=","),
                     "\ncurrent count: ", format(!!sym(tc_new),big.mark=","))),
-        aes(x=site, y=check_description, fill=plot_prop, text=text))+
+        aes(x=site, y=check_description, fill=prop_total_change, text=text))+
         geom_tile()+
         scale_fill_pedsn_dq(palette="diverging", discrete=FALSE)+
         guides(fill=guide_colorbar(title="Proportion\nTotal Change"))+
@@ -753,11 +757,10 @@ shinyServer(function(input, output) {
   ## VALUE SET CONFORMANCE ------
   output$vs_plot <- renderPlotly({
     if(input$sitename_vs_conf=='total'){
-      outplot<-ggplot(filter(vs_output(),!accepted_value),
-                      aes(x=site, y=tot_prop, fill=vocabulary_id, text=prop_viol))+
-        geom_bar(stat="identity",position="dodge")+
-        scale_fill_pedsn_dq()+
-        facet_wrap(~table_application*measurement_column, scales="free_x")+
+      outplot<-ggplot(vs_violations(),
+                      aes(x=site, y=tot_prop, fill=check_name, text=prop_viol))+
+        geom_bar(stat="identity",position="stack")+
+        facet_wrap(~table_application*measurement_column)+
         ylim(0,1)+
         theme_bw()+
         labs(y="Proportion of Total Records",
@@ -765,7 +768,9 @@ shinyServer(function(input, output) {
         theme(axis.text.x=element_text(size=14, angle = 90, vjust = 0.5, hjust=1),
               axis.text.y=element_text(size=14),
               axis.title.x=element_text(size=14),
-              axis.title.y=element_text(size=14))
+              axis.title.y=element_text(size=14),
+              legend.position = "none")+
+        scale_fill_pedsn_dq()
       }else if((input$largen_toggle==1|input$comp_vs_ln==0)&
                 nrow(filter(vs_vocablevel(), site==input$sitename_vs_conf&!accepted_value))>0){
         outplot<-ggplot(filter(vs_vocablevel(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id,text=prop_viol)) +
@@ -776,6 +781,7 @@ shinyServer(function(input, output) {
           ylim(0, 1)+
           facet_wrap(~table_application, scales="free")+
           theme_bw()+
+          scale_fill_pedsn_dq()+
           labs(x="Column Name",
                y="Proportion of Total Records",
                title="Violating Records per Column")+
@@ -813,7 +819,7 @@ shinyServer(function(input, output) {
           labs(x = "Column",
                y="Proportion Violating Records")+
           theme_bw()+
-          scale_fill_manual(values=site_colors)+
+          scale_fill_pedsn_dq()+
           coord_flip()+
           theme(legend.position = "none",
                 axis.text.x=element_text(size=14),
@@ -1077,6 +1083,22 @@ shinyServer(function(input, output) {
       outplot<-ggplot()+
         geom_blank()+
         annotate("text", label="Select specific measure/s", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(nrow(filter(uc_yr_output(),
+                         site==input$sitename_uc,
+                         year_date>=input$date_uc_range[1],
+                         year_date<=input$date_uc_range[2],
+                         check_description%in%input$uc_measure))==0){
+      outplot <- ggplot()+
+        geom_blank()+
+        annotate("text", label="No unmapped concepts", x=0,y=0)+
         theme(axis.text.x=element_blank(),
               axis.ticks.x=element_blank(),
               axis.text.y=element_blank(),

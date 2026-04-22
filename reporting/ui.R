@@ -85,8 +85,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  # Begin main
                                  mainPanel(
                                    fluidRow(
-                                     p("Note that sites only show up if there is at least one violation"),
-                                     box(title="Valueset Violations Plot", width=12, plotlyOutput("vs_plot")),
+                                     box(title="Valueset Violations Plot", plotlyOutput("vs_plot", height=500, width=1000)),
                                      box(title="Violations Listings", width=12, DT::dataTableOutput("vs_table"))
                                      )
                                  )

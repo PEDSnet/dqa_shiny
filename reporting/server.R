@@ -4,6 +4,13 @@ shinyServer(function(input, output) {
   glossary<-results_tbl('dqa_check_metadata')%>%
     collect()%>%
     select(check_type,check_name,check_domain,full_description)
+
+  # Clinical Insights
+  ### update choices for domain
+  updateSelectInput(inputId="ci_domain", choices=glossary$check_domain%>%sort())
+
+
+
   ## data cycle changes -----
   ### pp data
   dc_output_all <- reactive({
@@ -24,7 +31,6 @@ shinyServer(function(input, output) {
 
   ### update choices for domain
   observeEvent(dc_output_all(), {
-   # choices_pp<-gsub("(\\w+).*","\\1",dc_output_all()$domain)
     choices_pp<-dc_output_all()$domain
     choices_new<-unique(choices_pp)%>%
       sort()
@@ -35,7 +41,6 @@ shinyServer(function(input, output) {
   dc_output <- reactive({
     dc_output_all()%>%
       filter(domain%in%input$dc_domain)
-     # filter(str_detect(domain,input$dc_domain))
   })
 
   ### update choices for subdomain

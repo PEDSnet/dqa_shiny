@@ -400,7 +400,19 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
            tabPanel(title="Glossary",icon=icon("book"),
                     sidebarLayout(
                       sidebarPanel(tags$p("This page contains definitions for each of the DQ checks contained throughout the dashboard")),
-                      mainPanel(DT::dataTableOutput("glossary"))))
+                      mainPanel(DT::dataTableOutput("glossary")))),
+           tabPanel(title="More Plots",icon=icon("book"),
+                    sidebarLayout(
+                      sidebarPanel(
+                        sliderInput("n", "Number of plots", value=1, min=1, max=5),
+                        selectInput(inputId = "ci_domain",
+                                    label="Domain",
+                                    choices = c('Condition Occurrence'))),
+                      mainPanel(
+                        uiOutput("dynamic_plots")
+                        )
+                      )
+           )
 )#navbarpage
 )#fluidpage
 )#shinyUI

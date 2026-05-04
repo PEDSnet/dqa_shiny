@@ -1201,7 +1201,7 @@ shinyServer(function(input, output) {
         outplot <- ggplot(filter(bmc_pp(),best_notbest==1L&site==input$sitename_bmc&check_description%in%input$bmc_check)%>%
                             mutate(text=paste("Proportion best mapped: ",round(best_row_prop,2),
                                               "\nOverall median (Q1, Q3): ",round(median_val,2), " (",round(q1,2),", ",round(q3,2), ")")),
-                          aes(x=check_desc,fill=site,text=text))+
+                          aes(x=check_description,fill=site,text=text))+
           geom_bar(aes(y=best_row_prop), stat="identity")+
           geom_linerange(aes(ymin=q1, ymax=q3))+
           geom_point(aes(y=median_val), shape=23, size=1)+
@@ -1600,7 +1600,7 @@ shinyServer(function(input, output) {
                                        "\nProportion with concept: ", round(prop_with_concept,2),
                                        "\nMedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")",
                                        "\nDenominator: ",cohort_denominator)),
-                  aes(x=concept_group, text=text, fill=site))+
+                  aes(x=check_description, text=text, fill=site))+
         geom_bar(aes(y=prop_with_concept), stat="identity")+
         scale_fill_manual(values=site_colors)+
         geom_linerange(aes(ymin=q1, ymax=q3))+

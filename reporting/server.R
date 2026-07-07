@@ -1545,6 +1545,20 @@ shinyServer(function(input, output) {
               panel.grid.minor = element_blank())+
         labs(x="",
              y="")
+    }
+    else if(input$sitename_mf_visitid=='total'){
+      showplot<-ggplot(filter(mf_visitid_output(),domain%in%input$mf_visitid_domain),
+                       aes(x=check_description,y=prop_missing_visits_total, fill=site))+
+        geom_bar(stat='identity',position='dodge')+
+        theme_bw()+
+        scale_fill_manual(values=site_colors)+
+        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16))+
+        facet_wrap(~domain, scales="free_y", ncol=2)+
+        labs(x="domain",
+             y="Proportion Missing visit_occurrence_id")+
+        coord_flip()
     }else{
       showplot<-ggplot(filter(mf_visitid_output(),domain%in%input$mf_visitid_domain&
                                 site==input$sitename_mf_visitid),

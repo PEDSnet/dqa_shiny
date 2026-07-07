@@ -30,7 +30,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                     sidebarLayout(
                       sidebarPanel(
                         tags$h4("Welcome to the PEDSnet Data Quality Dashboard!"),
-                        tags$h6("Report Refresh Date:", Sys.Date()),
+                        tags$h6("Report Refresh Date:", config('refresh_date')),
                         tags$h6("Current Database Version:", config('db_current')),
                         radioButtons(inputId="largen_toggle",
                                      label="Display Type",

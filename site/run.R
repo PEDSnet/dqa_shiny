@@ -120,9 +120,11 @@ config('retain_intermediates', NA)
 config('results_schema', 'dqa_rox')
 
 #' Current database version
-config('db_current', 'v61')
+config('db_current', 'v62')
 #' Previous database version
-config('db_previous', 'v60')
+config('db_previous', 'v61')
+# Report refresh date
+config('refresh_date', '2026-07-06')
 
 #' Determine whether actual site names or masked identifiers
 #' should be shown on the app

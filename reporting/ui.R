@@ -30,7 +30,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                     sidebarLayout(
                       sidebarPanel(
                         tags$h4("Welcome to the PEDSnet Data Quality Dashboard!"),
-                        tags$h6("Report Refresh Date:", Sys.Date()),
+                        tags$h6("Report Refresh Date:", config('refresh_date')),
                         tags$h6("Current Database Version:", config('db_current')),
                         radioButtons(inputId="largen_toggle",
                                      label="Display Type",
@@ -92,6 +92,9 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=32,width=34,
                                  selectInput(inputId = "sitename_vs_conf",
                                              label = "Institution",
                                              choices = NULL),
+                                 checkboxGroupInput(inputId="vs_table",
+                                                    label="Table",
+                                                    choices=NULL),
                                  # only show comparison option for overall metrics
                                  conditionalPanel(
                                    condition="input.largen_toggle == 2",

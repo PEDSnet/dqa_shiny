@@ -164,6 +164,11 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId="sitename_vs_conf", choices=choices_new)
   })
 
+  observeEvent(vs_output(), {
+    choices_new<-unique(vs_output()$table_application)%>%sort()
+    updateCheckboxGroupInput(inputId="vs_table", choices=choices_new)
+  })
+
 ## unmapped concepts -----
   ### pp data
   uc_output <- reactive({
@@ -286,13 +291,13 @@ shinyServer(function(input, output) {
   output$bmc_conceptset_best<-DT::renderDT({
 
     bmc_conceptset%>%
-      filter(default_to=='best')%>%
+      filter(best_notbest==1)%>%
       select(check_description, concept)
   })
 
   output$bmc_conceptset_notbest<-DT::renderDT({
     bmc_conceptset%>%
-      filter(default_to=='notbest')%>%
+      filter(best_notbest==0)%>%
       select(check_description, concept)
   })
 
@@ -756,8 +761,20 @@ shinyServer(function(input, output) {
 
   ## VALUE SET CONFORMANCE ------
   output$vs_plot <- renderPlotly({
-    if(input$sitename_vs_conf=='total'){
-      outplot<-ggplot(vs_violations(),
+    if(length(input$vs_table)==0){
+      outplot<-ggplot()+
+        geom_blank()+
+        annotate("text", label="Select specific table/s", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
+    }else if(input$sitename_vs_conf=='total'){
+      outplot<-ggplot(filter(vs_violations(),table_application%in%input$vs_table),
                       aes(x=site, y=tot_prop, fill=check_name, text=prop_viol))+
         geom_bar(stat="identity",position="stack")+
         facet_wrap(~table_application*measurement_column)+
@@ -768,12 +785,24 @@ shinyServer(function(input, output) {
         theme(axis.text.x=element_text(size=14, angle = 90, vjust = 0.5, hjust=1),
               axis.text.y=element_text(size=14),
               axis.title.x=element_text(size=14),
-              axis.title.y=element_text(size=14),
-              legend.position = "none")+
+              axis.title.y=element_text(size=14))+
         scale_fill_pedsn_dq()
-      }else if((input$largen_toggle==1|input$comp_vs_ln==0)&
-                nrow(filter(vs_vocablevel(), site==input$sitename_vs_conf&!accepted_value))>0){
-        outplot<-ggplot(filter(vs_vocablevel(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id,text=prop_viol)) +
+      }else if(input$largen_toggle==1|input$comp_vs_ln==0){
+        if(nrow(filter(vs_vocablevel(),site==input$sitename_vs_conf&!accepted_value&table_application%in%input$vs_table))==0){
+          outplot<-ggplot()+
+            geom_blank()+
+            annotate("text", label="No violations in selected table/s", x=0,y=0)+
+            theme(axis.text.x=element_blank(),
+                  axis.ticks.x=element_blank(),
+                  axis.text.y=element_blank(),
+                  axis.ticks.y=element_blank(),
+                  panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank())+
+            labs(x="",
+                 y="")
+          }else{
+        outplot<-ggplot(filter(vs_vocablevel(),site==input$sitename_vs_conf&!accepted_value&
+                                 table_application%in%input$vs_table), aes(x=measurement_column, y = tot_prop, fill = vocabulary_id,text=prop_viol)) +
           geom_bar(stat="identity", position="dodge") +
           geom_label(aes(x=measurement_column, y=tot_prop, label=format(tot_ct, big.mark=",")),
                      position=position_dodge(),
@@ -789,7 +818,7 @@ shinyServer(function(input, output) {
                 axis.text.y=element_text(size=14),
                 axis.title.x=element_text(size=14),
                 axis.title.y=element_text(size=14))
-      }
+          }
     # else if(input$comp_vs_ln==0&
     #            nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
     #     outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = prop_viol, fill = vocabulary_id,text=tot_prop)) +
@@ -807,8 +836,9 @@ shinyServer(function(input, output) {
     #             axis.title.x=element_text(size=14),
     #             axis.title.y=element_text(size=14))
     #   }
-    else if(input$largen_toggle==2&input$comp_vs_ln==1){
-        outplot<-ggplot(filter(vs_output(), site==input$sitename_vs_conf)%>%
+    }else if(input$largen_toggle==2&input$comp_vs_ln==1){
+        outplot<-ggplot(filter(vs_output(), site==input$sitename_vs_conf&
+                                 table_application%in%input$vs_table)%>%
                           mutate(text=paste0("proportion: ",round(prop_viol, 3),
                                              "\nmedian (Q1, Q3): ",round(median_val,3), " (", round(q1,2), ", ", round(q3,3), ")")),
                         aes(x=measurement_column, text=text))+
@@ -1091,23 +1121,13 @@ shinyServer(function(input, output) {
               panel.grid.minor = element_blank())+
         labs(x="",
              y="")
-    }else if(nrow(filter(uc_yr_output(),
-                         site==input$sitename_uc,
-                         year_date>=input$date_uc_range[1],
-                         year_date<=input$date_uc_range[2],
-                         check_description%in%input$uc_measure))==0){
-      outplot <- ggplot()+
-        geom_blank()+
-        annotate("text", label="No unmapped concepts", x=0,y=0)+
-        theme(axis.text.x=element_blank(),
-              axis.ticks.x=element_blank(),
-              axis.text.y=element_blank(),
-              axis.ticks.y=element_blank(),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank())+
-        labs(x="",
-             y="")
-    }else if(input$sitename_uc=="total"){
+    }else if(input$sitename_uc=="total"&
+             nrow(
+               uc_yr_output()%>%filter(
+                 year_date>=input$date_uc_range[1],
+                 year_date<=input$date_uc_range[2],
+                 check_description%in%input$uc_measure)
+             )!=0){
       outplot <- ggplot(filter(uc_yr_output(),
                                year_date>=input$date_uc_range[1],
                                year_date<=input$date_uc_range[2],
@@ -1124,6 +1144,22 @@ shinyServer(function(input, output) {
               axis.title=element_text(size=18))+
         scale_color_manual(values=site_colors)+
         scale_x_continuous(breaks = pretty_breaks())
+    }else if(nrow(filter(uc_yr_output(),
+                         site==input$sitename_uc,
+                         year_date>=input$date_uc_range[1],
+                         year_date<=input$date_uc_range[2],
+                         check_description%in%input$uc_measure))==0){
+      outplot <- ggplot()+
+        geom_blank()+
+        annotate("text", label="No unmapped concepts", x=0,y=0)+
+        theme(axis.text.x=element_blank(),
+              axis.ticks.x=element_blank(),
+              axis.text.y=element_blank(),
+              axis.ticks.y=element_blank(),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank())+
+        labs(x="",
+             y="")
     }else if(input$largen_toggle==2&input$comp_uc_ln==1){
       outplot <- ggplot(filter(uc_yr_output(), site==input$sitename_uc,
                                   year_date>=input$date_uc_range[1],
@@ -1641,6 +1677,19 @@ shinyServer(function(input, output) {
               panel.grid.minor = element_blank())+
         labs(x="",
              y="")
+    }else if(input$sitename_mf_visitid=='total'){
+      showplot<-ggplot(filter(mf_visitid_output(),domain%in%input$mf_visitid_domain),
+                       aes(x=check_description,y=prop_missing_visits_total, fill=site))+
+        geom_bar(stat='identity', position="dodge")+
+        theme_bw()+
+        scale_fill_manual(values=site_colors)+
+        theme(axis.text.x=element_text(angle=90, vjust=0.5, hjust=1,size=12),
+              axis.text.y=element_text(size=12),
+              axis.title=element_text(size=16))+
+        facet_wrap(~domain, scales="free_y", ncol=2)+
+        labs(x="domain",
+             y="Proportion Missing visit_occurrence_id")+
+        coord_flip()
     }else{
       showplot<-ggplot(filter(mf_visitid_output(),domain%in%input$mf_visitid_domain&
                                 site==input$sitename_mf_visitid),

@@ -69,8 +69,8 @@ shinyServer(function(input, output) {
   ### pp data
   dc_output_all <- reactive({
     if(input$largen_toggle==1){
-      res('dc_output_pp')
-    }else{res('dc_output_ln')
+      res('dc_output_d_pp')
+    }else{res('dc_output_d_ln')
       }
   })
 
@@ -85,9 +85,9 @@ shinyServer(function(input, output) {
 
   ### update choices for domain
   observeEvent(dc_output_all(), {
-   # choices_pp<-gsub("(\\w+).*","\\1",dc_output_all()$domain)
-    choices_pp<-dc_output_all()$domain
-    choices_new<-unique(choices_pp)%>%
+   # choices_d_pp<-gsub("(\\w+).*","\\1",dc_output_all()$domain)
+    choices_d_pp<-dc_output_all()$domain
+    choices_new<-unique(choices_d_pp)%>%
       sort()
     updateSelectInput(inputId="dc_domain", choices=choices_new)
   })
@@ -110,17 +110,17 @@ shinyServer(function(input, output) {
   ### pp data
   vc_output <- reactive({
     if(input$largen_toggle==1){
-    res('vc_output_pp')%>%
+    res('vc_output_d_pp')%>%
       mutate(prop_viol=round(tot_prop,2),
              tot_dist_concept_prop=round(tot_dist_concept_prop,2))
-    }else{res('vc_output_ln')}
+    }else{res('vc_output_d_ln')}
   })
   vc_vocablevel<-reactive({
-    res('vc_output_pp')%>%
+    res('vc_output_d_pp')%>%
       mutate(prop_viol=round(tot_prop,2))
   })
   # vc_violations <- reactive({
-  #   res('vc_violations_pp') %>%
+  #   res('vc_violations_d_pp') %>%
   #     mutate(prop_viol=round(tot_prop,2))
   # })
   ## adjust available site name
@@ -143,16 +143,16 @@ shinyServer(function(input, output) {
   ## valueset conformance ------
   vs_output <- reactive({
     if(input$largen_toggle==1){
-      res('vs_output_pp')%>%
+      res('vs_output_d_pp')%>%
         mutate(prop_viol=round(tot_prop,2))
-    }else{res('vs_output_ln')}
+    }else{res('vs_output_d_ln')}
   })
   vs_vocablevel<-reactive({
-    res('vs_output_pp')%>%
+    res('vs_output_d_pp')%>%
       mutate(prop_viol=round(tot_prop,2))
   })
   vs_violations<-reactive({
-    res('vs_violations_pp')%>%
+    res('vs_violations_d_pp')%>%
       mutate(prop_viol=round(tot_prop,2))
   })
   ### adjust available site name
@@ -173,22 +173,22 @@ shinyServer(function(input, output) {
   ### pp data
   uc_output <- reactive({
     if(input$largen_toggle==1){
-      res('uc_output_pp')
+      res('uc_output_d_pp')
     }else{
-      res('uc_output_ln')
+      res('uc_output_d_ln')
     }
   })
   uc_yr_output <- reactive({
     if(input$largen_toggle==1){
-    res('uc_by_year_pp') %>%
+    res('uc_by_year_d_pp') %>%
       mutate(year_date=as.integer(year_date))
     }else{
-      res('uc_by_year_ln')%>%
+      res('uc_by_year_d_ln')%>%
         mutate(year_date=as.integer(year_date))
     }
   })
   uc_top_output <- reactive({
-    results_tbl('uc_grpd_pp') %>% collect()%>%
+    results_tbl('uc_grpd_d_pp') %>% collect()%>%
       group_by(site, check_description) %>%
       slice_max(order_by = src_value_ct, n=10) %>%
       ungroup()%>%
@@ -198,7 +198,7 @@ shinyServer(function(input, output) {
       mutate(proportion_of_unmapped=round(src_value_ct/unmapped_rows,2))
   })
   uc_top_output_overall <- reactive({
-    results_tbl('uc_grpd_pp') %>%collect()%>%
+    results_tbl('uc_grpd_d_pp') %>%collect()%>%
       group_by(check_description)%>%
       slice_max(order_by=src_value_ct, n=10)%>%
       ungroup()%>%
@@ -225,8 +225,8 @@ shinyServer(function(input, output) {
   ### capture data
   cfd_output <- reactive({
     if(input$largen_toggle==1){
-      res('cfd_output_pp')
-    }else{res('cfd_output_ln')}
+      res('cfd_output_d_pp')
+    }else{res('cfd_output_d_ln')}
   })
   ### adjust available site name
   observeEvent(cfd_output(), {
@@ -239,7 +239,7 @@ shinyServer(function(input, output) {
 
   ## best mapped concepts ----
   ### fetch data
-  top_rolled <-  results_tbl('bmc_output_concepts_pp')%>%
+  top_rolled <-  results_tbl('bmc_output_concepts_d_pp')%>%
     filter(best_notbest==0)%>%
     collect()%>%
     group_by(site, check_description)%>%
@@ -251,29 +251,29 @@ shinyServer(function(input, output) {
     unnest_wider(named_vec, names_sep="_")%>%
     unite("top5", -c(site, check_description), sep=", ", na.rm=TRUE)
 
-  bmc_pp <- reactive({
+  bmc_d_pp <- reactive({
     if(input$largen_toggle==1){
-      res('bmc_output_pp')%>%
+      res('bmc_output_d_pp')%>%
         left_join(top_rolled, by = c('site', 'check_description'))
     }else{
-      res('bmc_output_ln')%>%
+      res('bmc_output_d_ln')%>%
         left_join(top_rolled, by = c('site', 'check_description'))
     }
   })
-  bmc_pp_concepts <- reactive({
-    res('bmc_output_concepts_pp')
+  bmc_d_pp_concepts <- reactive({
+    res('bmc_output_concepts_d_pp')
   })
   # adjust available site name
-  observeEvent(bmc_pp(), {
+  observeEvent(bmc_d_pp(), {
     if(input$largen_toggle==1){
-      choices_new<-c("total",unique(bmc_pp()$site)%>%sort())
-    }else{choices_new<-unique(filter(bmc_pp(),site!='total')$site)%>%sort()
+      choices_new<-c("total",unique(bmc_d_pp()$site)%>%sort())
+    }else{choices_new<-unique(filter(bmc_d_pp(),site!='total')$site)%>%sort()
     }
     updateSelectInput(inputId="sitename_bmc", choices=choices_new)
   })
   # find the top 5 per check/site
-  bmc_pp_top <- reactive({
-    bmc_pp_concepts()%>%
+  bmc_d_pp_top <- reactive({
+    bmc_d_pp_concepts()%>%
       filter(site==input$sitename_bmc&best_notbest==0)%>%
       collect()%>%
       group_by(check_description)%>%
@@ -284,7 +284,7 @@ shinyServer(function(input, output) {
 
   # pull in the listing of concepts that are considered best/notbest
   bmc_conceptset <- results_tbl('bmc_concepts')%>%filter(!is.na(best_notbest))%>%
-    inner_join(results_tbl('bmc_output_pp')%>%
+    inner_join(results_tbl('bmc_output_d_pp')%>%
                  distinct(check_name, check_description), by='check_name')%>%
     collect()
   # set up the BMC tables that will be displayed
@@ -301,19 +301,19 @@ shinyServer(function(input, output) {
       select(check_description, concept)
   })
 
-  output$bmc_pp_top_nonbest <- DT::renderDT({
-    bmc_pp_top()%>%
+  output$bmc_d_pp_top_nonbest <- DT::renderDT({
+    bmc_d_pp_top()%>%
       mutate(row_proportions=round(row_proportions,2))
   })
-  observeEvent(bmc_pp(), {
-    choices_new<-unique(bmc_pp()$check_description)
+  observeEvent(bmc_d_pp(), {
+    choices_new<-unique(bmc_d_pp()$check_description)
     updateCheckboxGroupInput(inputId="bmc_check", choices=choices_new)
   })
 
 
   ## facts over time ------
   # capture data
-  fot_output_summary_ratio <- reactive({res('fot_ratios_pp')})
+  fot_output_summary_ratio <- reactive({res('fot_ratios_d_pp')})
   # # update domain choices
   observeEvent(fot_output_summary_ratio(), {
     choices_new_fot<-unique(fot_output_summary_ratio()$domain)%>%sort()
@@ -325,7 +325,7 @@ shinyServer(function(input, output) {
     updateSelectInput(inputId="fot_subdomain_overall", choices=choices_new_fot)
   })
 
-  # fot_output_heuristic <- reactive({results_tbl('fot_heuristic_summary_pp') %>%
+  # fot_output_heuristic <- reactive({results_tbl('fot_heuristic_summary_d_pp') %>%
   #     filter(domain!='labs')%>% # remove in future versions
   #     collect()%>%
   #     mutate(site=case_when(config('mask_site')~site_anon,
@@ -340,10 +340,10 @@ shinyServer(function(input, output) {
 
   # limit table to domain selected for specific check choices
 
-  fot_output <- reactive({res('fot_heuristic_pp') %>%
-      inner_join(res('fot_heuristic_summary_pp'),
+  fot_output <- reactive({res('fot_heuristic_d_pp') %>%
+      inner_join(res('fot_heuristic_summary_d_pp'),
                  by=c('domain','check_name', 'site','site_anon', 'sitenum')) %>%
-      inner_join(select(res('fot_ratios_pp'),
+      inner_join(select(res('fot_ratios_d_pp'),
                         c(row_cts, check_name, domain, site, time_end)),
                  by = c('check_name', 'domain', 'site', 'time_end'))%>%
       collect() %>%
@@ -376,9 +376,9 @@ shinyServer(function(input, output) {
   # capture data
   dcon_output <- reactive({
     if(input$largen_toggle==1){
-      indat<-res('dcon_output_pp')
+      indat<-res('dcon_output_d_pp')
     }else{
-      indat<-res('dcon_output_ln')
+      indat<-res('dcon_output_d_ln')
     }
     indat%>%
       mutate(cohort=factor(cohort, levels=c("cohort_2_only", "combined", "cohort_1_only",
@@ -438,9 +438,9 @@ shinyServer(function(input, output) {
   # connect with data
   mf_visitid_output <- reactive({
     if(input$largen_toggle==1){
-      res('mf_visitid_output_pp')
+      res('mf_visitid_output_d_pp')
     }else{
-      res('mf_visitid_ln')
+      res('mf_visitid_d_ln')
     }
   })
 
@@ -455,7 +455,7 @@ shinyServer(function(input, output) {
   ### adjust available site name for large n site comparison
   observeEvent(mf_visitid_output(), {
     choices_new<-unique((mf_visitid_output()%>%filter(site!='total'))$site)%>%sort()
-    updateSelectInput(inputId="sitename_mf_ln", choices=choices_new)
+    updateSelectInput(inputId="sitename_mf_d_ln", choices=choices_new)
   })
 
   # update choices for domain
@@ -466,7 +466,7 @@ shinyServer(function(input, output) {
 
   ## expected concepts present ---------------------
   ecp_output_all<- reactive({
-    if(input$largen_toggle==1){res('ecp_output_pp')}else{res('ecp_output_ln')}
+    if(input$largen_toggle==1){res('ecp_output_d_pp')}else{res('ecp_output_d_ln')}
   })
   ecp_output <- reactive({
     ecp_output_all()%>%
@@ -492,8 +492,8 @@ shinyServer(function(input, output) {
   # date plausibility -------
   dp_output_all <- reactive({
     if(input$largen_toggle==1){
-      res('dp_output_pp')
-    }else{res('dp_output_ln')
+      res('dp_output_d_pp')
+    }else{res('dp_output_d_ln')
     }
   })
 
@@ -516,7 +516,7 @@ shinyServer(function(input, output) {
   # other configurations ----------------------
 
   # set site colors based on table where all sites expected
-  site_list<-(res("dc_output_pp"))$site %>% unique() %>% append('allsite_mean') %>% append('allsite_median')
+  site_list<-(res("dc_output_d_pp"))$site %>% unique() %>% append('allsite_mean') %>% append('allsite_median')
   #ramp_palette <- colorRampPalette(brewer.pal(8, "Dark2"))(length(site_list))
   ramp_palette<-pedsn_dq_pal(palette="main", reverse=FALSE)(length(site_list))
   # randomized_palette <- ramp_palette[sample(1:length(ramp_palette))]
@@ -571,7 +571,7 @@ shinyServer(function(input, output) {
               panel.grid.minor = element_blank())+
         labs(x="",
              y="")
-    }else if(input$largen_toggle==2&input$comp_dc_ln==1){
+    }else if(input$largen_toggle==2&input$comp_dc_d_ln==1){
       # summary metrics: comparison
       showplot<-ggplot(filter(dc_output_all(),check_description%in%input$dc_subdomain&site==input$sitename_dc&application=="rows"),
                        aes(x=check_description,y=prop_total_change))+
@@ -661,7 +661,7 @@ shinyServer(function(input, output) {
         labs(x="Site",
              y="Person Proportion Change")
       # comparison across sites
-    }else if(input$largen_toggle==2&input$comp_dc_ln==1){
+    }else if(input$largen_toggle==2&input$comp_dc_d_ln==1){
       showplot<-ggplot(filter(dc_output_all(),check_description%in%input$dc_subdomain&site==input$sitename_dc&application=="person"),
                        aes(x=check_description,y=prop_total_change))+
         geom_bar(stat="identity",aes(fill=site))+
@@ -721,7 +721,7 @@ shinyServer(function(input, output) {
         theme(axis.text.y= element_text(hjust=1,size=9),
               axis.text.x = element_text(hjust=1,vjust=0.5,angle = 90,size=12),
               axis.title=element_text(size=16))
-    }else if(input$largen_toggle==2&input$comp_dc_ln==0){
+    }else if(input$largen_toggle==2&input$comp_dc_d_ln==0){
       plt<-ggplot(indata%>%mutate(
         text=paste0("site: ",site,
                     "\ndomain: ",domain,
@@ -787,7 +787,7 @@ shinyServer(function(input, output) {
               axis.title.x=element_text(size=14),
               axis.title.y=element_text(size=14))+
         scale_fill_pedsn_dq()
-      }else if(input$largen_toggle==1|input$comp_vs_ln==0){
+      }else if(input$largen_toggle==1|input$comp_vs_d_ln==0){
         if(nrow(filter(vs_vocablevel(),site==input$sitename_vs_conf&!accepted_value&table_application%in%input$vs_table))==0){
           outplot<-ggplot()+
             geom_blank()+
@@ -819,7 +819,7 @@ shinyServer(function(input, output) {
                 axis.title.x=element_text(size=14),
                 axis.title.y=element_text(size=14))
           }
-    # else if(input$comp_vs_ln==0&
+    # else if(input$comp_vs_d_ln==0&
     #            nrow(filter(vs_output(), site==input$sitename_vs_conf&!accepted_value))>0){
     #     outplot<-ggplot(filter(vs_output(),site==input$sitename_vs_conf&!accepted_value), aes(x=measurement_column, y = prop_viol, fill = vocabulary_id,text=tot_prop)) +
     #       geom_bar(stat="identity", position="dodge") +
@@ -836,7 +836,7 @@ shinyServer(function(input, output) {
     #             axis.title.x=element_text(size=14),
     #             axis.title.y=element_text(size=14))
     #   }
-    }else if(input$largen_toggle==2&input$comp_vs_ln==1){
+    }else if(input$largen_toggle==2&input$comp_vs_d_ln==1){
         outplot<-ggplot(filter(vs_output(), site==input$sitename_vs_conf&
                                  table_application%in%input$vs_table)%>%
                           mutate(text=paste0("proportion: ",round(prop_viol, 3),
@@ -915,7 +915,7 @@ shinyServer(function(input, output) {
           theme_bw()+
           theme(axis.text.x = element_text(angle=90))
       }
-    }else if(input$largen_toggle==2&input$comp_vc_ln==1){
+    }else if(input$largen_toggle==2&input$comp_vc_d_ln==1){
       plt<-ggplot(filter(vc_output(), site==input$sitename_vc_conf)%>%
                       mutate(text=paste0("proportion: ",round(prop_viol, 2),
                                          "\nmedian (Q1, Q3): ",round(median_val,2), " (", round(q1,2), ", ", round(q3,2), ")")),
@@ -930,7 +930,7 @@ shinyServer(function(input, output) {
           scale_fill_manual(values=site_colors)+
           coord_flip()+
           theme(legend.position = "none")
-    }else if(input$largen_toggle==2&input$comp_vc_ln==0){
+    }else if(input$largen_toggle==2&input$comp_vc_d_ln==0){
       plt<-ggplot(filter(vc_output(),site==input$sitename_vc_conf)%>%
                     mutate(text=paste0("proportion with violation: ",round(prop_viol,3))))+
         geom_bar(aes(x=measurement_column,y=prop_viol,fill=site, text=text), stat="identity")+
@@ -1074,7 +1074,7 @@ shinyServer(function(input, output) {
           scale_fill_manual(values=site_colors)+
           labs(x="Site",
                y="Proportion Unmapped Concepts")
-    }else if(input$largen_toggle==2&input$comp_uc_ln==1){
+    }else if(input$largen_toggle==2&input$comp_uc_d_ln==1){
       outplot <- ggplot(filter(uc_output(),
                                  site==input$sitename_uc&
                                  check_description%in%input$uc_measure),
@@ -1160,7 +1160,7 @@ shinyServer(function(input, output) {
               panel.grid.minor = element_blank())+
         labs(x="",
              y="")
-    }else if(input$largen_toggle==2&input$comp_uc_ln==1){
+    }else if(input$largen_toggle==2&input$comp_uc_d_ln==1){
       outplot <- ggplot(filter(uc_yr_output(), site==input$sitename_uc,
                                   year_date>=input$date_uc_range[1],
                                year_date<=input$date_uc_range[2],
@@ -1273,7 +1273,7 @@ shinyServer(function(input, output) {
           facet_wrap(~visit_type)+
           scale_fill_pedsn_dq(palette="sequential", discrete=FALSE)
         # large n, comparison
-    }else if(input$largen_toggle==2&input$comp_cfd_ln==1){
+    }else if(input$largen_toggle==2&input$comp_cfd_d_ln==1){
         outplot<-ggplot(cfd_output()%>%filter(site==input$sitename_cfd)%>%
                           mutate(text=paste0("\nprop. patients: ",fact_pts_prop,
                                              "\nprop. visits: ",fact_visits_prop,
@@ -1322,7 +1322,7 @@ shinyServer(function(input, output) {
              y="")
     }else if(input$sitename_bmc=="total"){
       # individual sites, overall
-        outplot <-  ggplot(filter(bmc_pp(),best_notbest==1L&site!='total'&check_description%in%input$bmc_check),
+        outplot <-  ggplot(filter(bmc_d_pp(),best_notbest==1L&site!='total'&check_description%in%input$bmc_check),
                            aes(x=site, y=best_row_prop, fill=site,
                                text=round(best_row_prop,2)))+
           geom_bar(stat='identity')+
@@ -1333,9 +1333,9 @@ shinyServer(function(input, output) {
           coord_flip()+
           theme_bw()+
           theme(legend.position="none")
-    }else if(input$largen_toggle==2&input$comp_bmc_ln==1){
+    }else if(input$largen_toggle==2&input$comp_bmc_d_ln==1){
       # large n, overall
-        outplot <- ggplot(filter(bmc_pp(),best_notbest==1L&site==input$sitename_bmc&check_description%in%input$bmc_check)%>%
+        outplot <- ggplot(filter(bmc_d_pp(),best_notbest==1L&site==input$sitename_bmc&check_description%in%input$bmc_check)%>%
                             mutate(text=paste("Proportion best mapped: ",round(best_row_prop,2),
                                               "\nOverall median (Q1, Q3): ",round(median_val,2), " (",round(q1,2),", ",round(q3,2), ")")),
                           aes(x=check_description,fill=site,text=text))+
@@ -1349,7 +1349,7 @@ shinyServer(function(input, output) {
                y="Proportion Best Mapped")+
           coord_flip()
       }else{
-      outplot <- ggplot(filter(bmc_pp(), site==input$sitename_bmc&check_description%in%input$bmc_check)%>%
+      outplot <- ggplot(filter(bmc_d_pp(), site==input$sitename_bmc&check_description%in%input$bmc_check)%>%
                           mutate(best_notbest=case_when(best_notbest==0~"No",
                                                        best_notbest==1~"Yes")),
                         aes(x=check_description, y=best_row_prop, fill=best_notbest, text=paste0("Proportion ",best_notbest, ": ", round(best_row_prop,2),
@@ -1550,7 +1550,7 @@ shinyServer(function(input, output) {
             coord_flip()
         }
         # large n
-    }else if(input$largen_toggle==2&input$comp_dcon_ln==1){
+    }else if(input$largen_toggle==2&input$comp_dcon_d_ln==1){
       showplot <- ggplot(filter(dcon_output(),
                                 site==input$sitename_dcon,
                                 check_description%in%input$dcon_check,
@@ -1828,7 +1828,7 @@ shinyServer(function(input, output) {
           facet_wrap(~check_description)+
           coord_flip()
       }
-    }else if(input$largen_toggle==2&input$comp_dp_ln==1){
+    }else if(input$largen_toggle==2&input$comp_dp_d_ln==1){
       # summary metrics: comparison
       plt<-ggplot(filter(dp_output_all(),check_description%in%input$dp_check_desc&site==input$sitename_dp)%>%
                          mutate(text=paste0("\nproportion: ",round(prop_implausible,2),

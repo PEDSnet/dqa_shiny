@@ -58,7 +58,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
-                                     radioButtons(inputId="comp_dc_ln",
+                                     radioButtons(inputId="comp_dc_d_ln",
                                                  label="Comparison Type",
                                                  choices=list("Across Sites"=1,
                                                               "None"=0))
@@ -94,7 +94,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                  # only show comparison option for overall metrics
                                  conditionalPanel(
                                    condition="input.largen_toggle == 2",
-                                   radioButtons(inputId="comp_vs_ln",
+                                   radioButtons(inputId="comp_vs_d_ln",
                                                label="Comparison Type",
                                                choices=list("Across Sites"=1,
                                                             "None"=0))
@@ -115,7 +115,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                                choices=NULL),
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
-                                     radioButtons(inputId="comp_vc_ln",
+                                     radioButtons(inputId="comp_vc_d_ln",
                                                   label="Comparison Type",
                                                   choices=list("Across Sites"=1,
                                                                "None"=0))
@@ -146,7 +146,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
-                                     radioButtons(inputId="comp_uc_ln",
+                                     radioButtons(inputId="comp_uc_d_ln",
                                                   label="Comparison Type",
                                                   choices=list("Across Sites"=1,
                                                                "None"=0))
@@ -183,7 +183,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
-                                     radioButtons(inputId="comp_cfd_ln",
+                                     radioButtons(inputId="comp_cfd_d_ln",
                                                   label="Comparison Type",
                                                   choices=list("Across Sites"=1,
                                                                "None"=0))
@@ -216,7 +216,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
-                                     radioButtons(inputId="comp_bmc_ln",
+                                     radioButtons(inputId="comp_bmc_d_ln",
                                                   label="Comparison Type",
                                                   choices=list("Across Sites"=1,
                                                                "None"=0))
@@ -288,13 +288,13 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
-                                     radioButtons(inputId="comp_dcon_ln",
+                                     radioButtons(inputId="comp_dcon_d_ln",
                                                   label="Comparison Type",
                                                   choices=list("Across Sites"=1,
                                                                "None"=0))
                                    ),
                                    conditionalPanel(
-                                     condition="input.largen_toggle == 1 || input.comp_dcon_ln ==0",
+                                     condition="input.largen_toggle == 1 || input.comp_dcon_d_ln ==0",
                                      selectInput(inputId = "denom_dcon",
                                                label = "Select Denominator",
                                                choices = c("Overall",
@@ -371,7 +371,7 @@ navbarPage(dashboardHeader(title=span(img(src="logo.svg", height=36,width=36,
                                    # only show comparison option for overall metrics
                                    conditionalPanel(
                                      condition="input.largen_toggle == 2",
-                                     radioButtons(inputId="comp_dp_ln",
+                                     radioButtons(inputId="comp_dp_d_ln",
                                                   label="Comparison Type",
                                                   choices=list("Across Sites"=1,
                                                                "None"=0))
